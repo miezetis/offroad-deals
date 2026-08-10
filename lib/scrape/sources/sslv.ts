@@ -10,23 +10,9 @@ import type { RawListing, Source } from "../types";
  */
 const CATEGORIES: [path: string, label: string][] = [
   ["toyota/land-cruiser", "Toyota Land Cruiser"],
-  ["nissan/patrol", "Nissan Patrol"],
-  ["nissan/terrano", "Nissan Terrano"],
-  ["nissan/pathfinder", "Nissan Pathfinder"],
-  ["mitsubishi/pajero", "Mitsubishi Pajero"],
-  ["land-rover/defender", "Land Rover Defender"],
-  ["land-rover/discovery", "Land Rover Discovery"],
-  ["suzuki/jimny", "Suzuki Jimny"],
-  ["suzuki/vitara", "Suzuki Vitara"],
-  ["suzuki/grand-vitara", "Suzuki Grand Vitara"],
-  ["jeep/wrangler", "Jeep Wrangler"],
-  ["opel/frontera", "Opel Frontera"],
-  ["hyundai/terracan", "Hyundai Terracan"],
-  ["hyundai/galloper", "Hyundai Galloper"],
-  ["kia/sorento", "Kia Sorento"],
-  ["ford/maverick", "Ford Maverick"],
-  ["ford/explorer", "Ford Explorer"],
-  ["uaz/", "UAZ"],
+  ["toyota/rav4", "Toyota RAV4"],
+  ["subaru/forester", "Subaru Forester"],
+  ["subaru/outback", "Subaru Outback"],
 ];
 
 export function parseCategory(html: string, label: string): RawListing[] {

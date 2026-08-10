@@ -7,30 +7,11 @@ import type { RawListing, Source } from "../types";
  * The richest source of the whole set.
  */
 const MODEL_PATHS = [
-  "mitsubishi/pajero",
   "toyota/land-cruiser",
-  "nissan/patrol",
-  "nissan/terrano",
-  "nissan/pathfinder",
-  "suzuki/jimny",
-  "suzuki/vitara",
-  "suzuki/grand-vitara",
-  "suzuki/samurai",
-  "land-rover/defender",
-  "land-rover/discovery",
-  "jeep/wrangler",
-  "isuzu/trooper",
-  "opel/frontera",
-  "ssangyong/musso",
-  "ssangyong/korando",
-  "ssangyong/rexton",
-  "hyundai/terracan",
-  "hyundai/galloper",
-  "kia/sorento",
-  "ford/maverick",
-  "ford/explorer",
-  "mercedes-benz/klasa-g",
-  "uaz/pozostale-uaz",
+  "toyota/rav4",
+  "toyota/4runner",
+  "subaru/forester",
+  "subaru/outback",
 ];
 
 type OtomotoNode = {

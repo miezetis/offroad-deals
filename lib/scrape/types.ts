@@ -22,6 +22,11 @@ export type Source = {
   name: string;
   country: string;
   /**
+   * When present and false, the source is skipped entirely rather than
+   * counted as broken. Used by the Bright Data sources when no key is set.
+   */
+  enabled?: () => boolean;
+  /**
    * Fetch one round of search pages and return everything found.
    * Adapters do their own pagination internally, bounded by `maxPages`.
    */

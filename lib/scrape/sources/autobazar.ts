@@ -8,30 +8,10 @@ import type { RawListing, Source } from "../types";
  * category URLs per model.
  */
 const MODEL_PATHS = [
-  "mitsubishi-pajero",
   "toyota-land-cruiser",
-  "nissan-patrol",
-  "nissan-terrano",
-  "nissan-pathfinder",
-  "suzuki-jimny",
-  "suzuki-samurai",
-  "suzuki-vitara",
-  "suzuki-grand-vitara",
-  "land-rover-defender",
-  "land-rover-discovery",
-  "jeep-wrangler",
-  "isuzu-trooper",
-  "opel-frontera",
-  "ssangyong-musso",
-  "ssangyong-korando",
-  "ssangyong-rexton",
-  "hyundai-terracan",
-  "hyundai-galloper",
-  "kia-sorento",
-  "ford-maverick",
-  "ford-explorer",
-  "mercedes-g",
-  "uaz",
+  "toyota-rav4",
+  "subaru-forester",
+  "subaru-outback",
 ];
 
 export function parseList(html: string): RawListing[] {

@@ -30,8 +30,13 @@ async function main() {
   // Sources hit different hosts, and the polite rate limit is per host, so
   // they run in parallel. Wall time becomes the slowest source, which keeps
   // the depth-6 nightly sweep well inside the workflow timeout.
+  const active = SOURCES.filter((s) => s.enabled?.() ?? true);
+  for (const s of SOURCES) {
+    if (!active.includes(s)) console.log(`${s.name}: disabled (no key), skipping`);
+  }
+
   await Promise.all(
-    SOURCES.map(async (source) => {
+    active.map(async (source) => {
       try {
         const rows = await source.scan(depth);
         const stats = await ingest(source, rows);

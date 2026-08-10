@@ -9,24 +9,11 @@ import type { RawListing, Source } from "../types";
  * price suffixes, which parsePrice ignores.
  */
 const KEYWORDS = [
-  "mitsubishi-pajero",
   "toyota-land-cruiser",
-  "nissan-patrol",
-  "nissan-terrano",
-  "suzuki-jimny",
-  "suzuki-samurai",
-  "suzuki-vitara",
-  "land-rover-defender",
-  "land-rover-discovery",
-  "jeep-wrangler",
-  "isuzu-trooper",
-  "opel-frontera",
-  "ssangyong-musso",
-  "hyundai-terracan",
-  "hyundai-galloper",
-  "ford-maverick",
-  "lada-niva-uaz",
-  "mercedes-g-klasse",
+  "toyota-rav4",
+  "toyota-4runner",
+  "subaru-forester",
+  "subaru-outback",
 ];
 
 export function parseList(html: string): RawListing[] {

@@ -10,21 +10,12 @@ import type { RawListing, Source } from "../types";
  * them downstream.
  */
 const KEYWORDS = [
-  "pajero",
   "land cruiser",
-  "patrol",
-  "jimny",
-  "wrangler",
-  "defender",
-  "discovery",
-  "terrano",
-  "trooper",
-  "vitara",
-  "musso",
-  "korando",
-  "terracan",
-  "frontera",
-  "samurai",
+  "rav4",
+  "4runner",
+  "hilux surf",
+  "forester",
+  "outback",
 ];
 
 export function parseList(html: string): RawListing[] {
