@@ -31,6 +31,34 @@ Driving every filter and score in the app:
 - **Auth**: password gate in `proxy.ts`, session cookie derived from
   `SITE_PASSWORD`.
 
+## Source sites
+
+Measured directly, not assumed. A plain `fetch` with browser-like headers either
+returns real listing data or gets challenged.
+
+| Country | Site | Direct fetch | Where the data lives |
+|---|---|---|---|
+| LV | ss.com | works | plain HTML table |
+| FI | nettiauto.com | works | embedded JSON (`"price":23700`) plus card markup. Note: `www.` fails DNS, use the bare host |
+| PL | otomoto.pl | works | `__NEXT_DATA__` JSON, the richest structured source of the set |
+| SK | autobazar.sk | works | `.price` card markup |
+| SK | bazos.sk | works | plain HTML |
+| DE | kleinanzeigen.de | works | card markup plus JSON-LD blocks |
+| FI | tori.fi | shell only | client-rendered, needs their internal JSON API |
+| EE | auto24.ee | **blocked** | Cloudflare security check |
+| EE | soov.ee | **blocked** | Cloudflare |
+| LT | autoplius.lt | **blocked** | Cloudflare |
+| LT | autogidas.lt | **blocked** | Cloudflare |
+| PL | olx.pl | **blocked** | CloudFront 403 |
+| DE | mobile.de | **blocked** | hard access denied |
+
+The blocked set is why Bright Data is a requirement rather than a nice-to-have:
+it includes every Lithuanian and Estonian source, which is the home market.
+
+To keep paid request volume low, blocked sites are crawled by newest-first
+category listing (a few pages per run) rather than per-model, with a deeper
+sweep once a day.
+
 ## Environment variables
 
 | Name | Used by | Purpose |
