@@ -18,17 +18,32 @@ function scoreColor(score: number) {
 export function ScoreBadge({ score, breakdown }: { score: number; breakdown: Factor[] }) {
   const [hovered, setHovered] = useState(false);
   const [pinned, setPinned] = useState(false);
-  const wrapper = useRef<HTMLDivElement>(null);
+  // The panel and trigger are tracked separately from the backdrop: the
+  // backdrop is a sibling in the DOM but visually "outside" the sheet, so a
+  // wrapper-wide containment check would treat every dismissing tap as a tap
+  // inside and the sheet could never be closed on touch.
+  const panel = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const open = hovered || pinned;
 
-  // A tapped-open panel should close when tapping anywhere else.
   useEffect(() => {
     if (!pinned) return;
-    const onDocPointerDown = (e: PointerEvent) => {
-      if (!wrapper.current?.contains(e.target as Node)) setPinned(false);
+
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (panel.current?.contains(target) || trigger.current?.contains(target)) return;
+      setPinned(false);
     };
-    document.addEventListener("pointerdown", onDocPointerDown);
-    return () => document.removeEventListener("pointerdown", onDocPointerDown);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPinned(false);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [pinned]);
 
   if (!breakdown?.length) {
@@ -39,17 +54,27 @@ export function ScoreBadge({ score, breakdown }: { score: number; breakdown: Fac
     );
   }
 
+  const close = () => {
+    setPinned(false);
+    setHovered(false);
+  };
+
   return (
-    <div
-      ref={wrapper}
-      className="relative inline-block"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
+    <div className="relative inline-block">
       <button
+        ref={trigger}
         type="button"
         aria-expanded={open}
         aria-label={`Score ${score} of 100, show breakdown`}
+        // Only a real mouse opens on hover. Touch devices emit an emulated
+        // mouseenter on tap, which would otherwise leave the panel stuck open
+        // with no pointer to move away.
+        onPointerEnter={(e) => {
+          if (e.pointerType === "mouse") setHovered(true);
+        }}
+        onPointerLeave={(e) => {
+          if (e.pointerType === "mouse") setHovered(false);
+        }}
         onClick={(e) => {
           e.preventDefault();
           setPinned((p) => !p);
@@ -60,24 +85,41 @@ export function ScoreBadge({ score, breakdown }: { score: number; breakdown: Fac
         <span aria-hidden className="opacity-60">ⓘ</span>
       </button>
 
-      {/* Dims the list behind the mobile sheet so it reads as a layer. */}
+      {/* Tap-anywhere-to-dismiss layer, and it dims the list behind the sheet. */}
       {pinned ? (
-        <div className="fixed inset-0 z-20 bg-black/50 sm:hidden" aria-hidden />
+        <div
+          className="fixed inset-0 z-20 bg-black/50 sm:bg-transparent"
+          aria-hidden
+          onClick={close}
+        />
       ) : null}
 
       {open ? (
         <div
+          ref={panel}
           role="dialog"
           // Anchoring to the badge overflows a narrow screen, so on mobile
           // this becomes a bottom sheet and only goes back to an anchored
           // popover once there is room for one.
           className="fixed inset-x-3 bottom-3 z-30 rounded-xl border border-neutral-700 bg-neutral-900 p-3 text-left shadow-2xl shadow-black/60 sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-full sm:mt-1.5 sm:w-80"
         >
-          <div className="mb-2 flex items-baseline justify-between border-b border-neutral-800 pb-2">
+          <div className="mb-2 flex items-center justify-between gap-2 border-b border-neutral-800 pb-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
               Score breakdown
             </span>
-            <span className="text-lg font-bold">{score}<span className="text-xs text-neutral-500">/100</span></span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold">
+                {score}<span className="text-xs text-neutral-500">/100</span>
+              </span>
+              <button
+                type="button"
+                onClick={close}
+                aria-label="Close score breakdown"
+                className="-mr-1 rounded-md px-2 py-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <ul className="space-y-1.5">
