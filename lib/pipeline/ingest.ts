@@ -34,6 +34,12 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
     const priceEur = row.currency === "PLN" ? await plnToEur(row.price) : row.price;
     if (priceEur < MIN_PRICE_EUR || priceEur > MAX_PRICE_EUR) continue;
 
+    // A 20-year-old 4x4 with under 30k km is a seller typo, not a time
+    // capsule. Better no mileage than a fantasy one skewing the scores.
+    if (row.mileageKm && row.mileageKm < 30000 && row.year && row.year < 2015) {
+      row = { ...row, mileageKm: undefined };
+    }
+
     stats.kept++;
     const id = `${source.name}:${row.sourceId}`;
 

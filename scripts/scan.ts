@@ -27,26 +27,31 @@ async function main() {
   const counts: Record<string, IngestStats & { error?: string }> = {};
   const warnings: string[] = [];
 
-  for (const source of SOURCES) {
-    try {
-      const rows = await source.scan(depth);
-      const stats = await ingest(source, rows);
-      counts[source.name] = stats;
-      console.log(
-        `${source.name}: seen=${stats.seen} kept=${stats.kept} new=${stats.inserted} drops=${stats.priceDrops}`,
-      );
-      if (stats.seen < source.expectedMinimum) {
-        warnings.push(
-          `${source.name} returned ${stats.seen} rows (expected >= ${source.expectedMinimum}). Markup change or block?`,
+  // Sources hit different hosts, and the polite rate limit is per host, so
+  // they run in parallel. Wall time becomes the slowest source, which keeps
+  // the depth-6 nightly sweep well inside the workflow timeout.
+  await Promise.all(
+    SOURCES.map(async (source) => {
+      try {
+        const rows = await source.scan(depth);
+        const stats = await ingest(source, rows);
+        counts[source.name] = stats;
+        console.log(
+          `${source.name}: seen=${stats.seen} kept=${stats.kept} new=${stats.inserted} drops=${stats.priceDrops}`,
         );
+        if (stats.seen < source.expectedMinimum) {
+          warnings.push(
+            `${source.name} returned ${stats.seen} rows (expected >= ${source.expectedMinimum}). Markup change or block?`,
+          );
+        }
+      } catch (err) {
+        const msg = (err as Error).message.slice(0, 200);
+        counts[source.name] = { seen: 0, kept: 0, inserted: 0, priceDrops: 0, error: msg };
+        warnings.push(`${source.name} failed entirely: ${msg}`);
+        console.log(`${source.name}: FAILED ${msg}`);
       }
-    } catch (err) {
-      const msg = (err as Error).message.slice(0, 200);
-      counts[source.name] = { seen: 0, kept: 0, inserted: 0, priceDrops: 0, error: msg };
-      warnings.push(`${source.name} failed entirely: ${msg}`);
-      console.log(`${source.name}: FAILED ${msg}`);
-    }
-  }
+    }),
+  );
 
   const deactivated = await deactivateStale();
   const { scored } = await scoreAll();
