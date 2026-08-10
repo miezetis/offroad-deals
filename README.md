@@ -15,7 +15,7 @@ Driving every filter and score in the app:
 | Based in | Lithuania |
 | Will travel | Anywhere in EE / LV / LT / FI / PL / SK / DE |
 | Budget | 5,000 to 10,000 EUR (car only, before transport and registration) |
-| Vehicles | Classic body-on-frame 4x4s only |
+| Vehicles | Toyota and Subaru only: Land Cruiser, Hilux Surf / 4Runner, RAV4, Forester, Outback |
 | Fuel | Diesel preferred, petrol and LPG acceptable |
 | Transmission | Manual preferred (scoring bonus, not a hard filter) |
 | Condition floor | Minor work acceptable, no rotten frame and no blown engine |
@@ -59,20 +59,16 @@ returns real listing data or gets challenged.
 | SK | autobazar.sk | works | `.price` card markup |
 | SK | bazos.sk | works | plain HTML |
 | DE | kleinanzeigen.de | works | card markup plus JSON-LD blocks |
-| FI | tori.fi | shell only | client-rendered, needs their internal JSON API |
-| EE | auto24.ee | **blocked** | Cloudflare security check |
-| EE | soov.ee | **blocked** | Cloudflare |
-| LT | autoplius.lt | **blocked** | Cloudflare |
-| LT | autogidas.lt | **blocked** | Cloudflare |
-| PL | olx.pl | **blocked** | CloudFront 403 |
-| DE | mobile.de | **blocked** | hard access denied |
+| LT | autoplius.lt | via Bright Data | newest-first all-cars feed (order_by=3), matcher filters |
+| LT | autogidas.lt | via Bright Data | default bump-newest feed |
+| EE | auto24.ee | via Bright Data | SUV category (a=102), cheap-end-first, deep sweep covers the rest |
+| FI | tori.fi | not scraped | client-rendered; nettiauto covers FI |
+| EE | soov.ee | not scraped | Cloudflare; auto24 covers EE |
+| PL | olx.pl | not scraped | CloudFront 403; otomoto covers PL |
+| DE | mobile.de | not scraped | hard block; kleinanzeigen covers DE |
 
-The blocked set is why Bright Data is a requirement rather than a nice-to-have:
-it includes every Lithuanian and Estonian source, which is the home market.
-
-To keep paid request volume low, blocked sites are crawled by newest-first
-category listing (a few pages per run) rather than per-model, with a deeper
-sweep once a day.
+The Bright Data trio no-ops cleanly when `BRIGHTDATA_API_KEY` is unset. Feed
+strategy keeps paid volume at roughly 8 requests per hourly run.
 
 ## Environment variables
 
