@@ -60,6 +60,10 @@ export function toListing(node: OtomotoNode): RawListing | undefined {
     mileageKm: param("mileage") ? parseInt(param("mileage")!, 10) : undefined,
     fuel: param("fuel_type"),
     transmission: param("gearbox"),
+    // engine_power is in KM (Polish horsepower), normalise to kW.
+    powerKw: param("engine_power")
+      ? Math.round(parseInt(param("engine_power")!, 10) * 0.7355)
+      : undefined,
     location: [node.location?.city?.name, node.location?.region?.name]
       .filter(Boolean)
       .join(", "),

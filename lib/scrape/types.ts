@@ -11,6 +11,8 @@ export type RawListing = {
   mileageKm?: number;
   fuel?: string;
   transmission?: string;
+  /** Engine power in kW, normalised from whatever unit the site used. */
+  powerKw?: number;
   location?: string;
   imageUrl?: string;
   /** Short teaser text when the search page carries one. */

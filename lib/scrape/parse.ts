@@ -40,12 +40,36 @@ export function parseYear(text: string): number | undefined {
   return year >= 1960 && year <= max ? year : undefined;
 }
 
+/**
+ * Engine power, always normalised to kW.
+ *
+ * The trap: in Polish ads "KM" is horsepower (konie mechaniczne) while "km"
+ * is mileage, so the horsepower branch is deliberately case-sensitive and kW
+ * is matched first.
+ */
+export function parsePower(text: string): number | undefined {
+  const kw = text.match(/(\d{2,4})[\s.]*kw\b/i);
+  if (kw) {
+    const value = parseInt(kw[1], 10);
+    if (value >= 20 && value <= 600) return value;
+  }
+
+  const hp = text.match(/(\d{2,4})\s*(?:KM|PS|ps\b|[Hh][Pp]|[Cc][Vv]|[Kk][Ss])\b/);
+  if (hp) {
+    const value = Math.round(parseInt(hp[1], 10) * 0.7355);
+    if (value >= 20 && value <= 600) return value;
+  }
+  return undefined;
+}
+
+// LPG is checked before petrol on purpose: a "benzinas / dujos" car is a
+// converted one, and that is the more useful fact about it.
 const FUEL_PATTERNS: [RegExp, string][] = [
-  [/dyzel|diesel|dīzel|dyzelis|diisel|td\b|tdi\b|dci\b|crdi\b|hdi\b/i, "diesel"],
-  [/benzin|petrol|bensiin|bensiini|benzīns|gasoline/i, "petrol"],
-  [/\blpg\b|dujos|gāze|gaas|autogas/i, "lpg"],
-  [/hybrid|hibrid/i, "hybrid"],
-  [/electric|elektri/i, "electric"],
+  [/dyzel|diesel|dīzel|dyzelis|diisel|dízel|nafta|\btd\b|\btdi\b|\bdci\b|\bcrdi\b|\bhdi\b|d4d|\bdid\b/i, "diesel"],
+  [/\blpg\b|dujos|gāze|gaze|gaas|autogas|benzin\s*\/\s*duj|benzin\s*\/\s*gaz/i, "lpg"],
+  [/benzin|petrol|bensiin|bensiini|benzīns|benzyna|gasoline/i, "petrol"],
+  [/hybrid|hibrid|hybridi/i, "hybrid"],
+  [/electric|elektri|elektro/i, "electric"],
 ];
 
 export function parseFuel(text: string): string | undefined {

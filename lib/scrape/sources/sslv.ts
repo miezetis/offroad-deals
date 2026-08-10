@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { fetchPage } from "../http";
-import { parseMileage, parsePrice, parseYear } from "../parse";
+import { parseFuel, parseMileage, parsePower, parsePrice, parseTransmission, parseYear } from "../parse";
 import type { RawListing, Source } from "../types";
 
 /**
@@ -38,16 +38,23 @@ export function parseCategory(html: string, label: string): RawListing[] {
     const mileageCell = cells.find((c) => /tūkst|tukst|km/i.test(c));
     const yearCell = cells.find((c) => /^(19|20)\d\d$/.test(c));
 
+    const sellerText = link.text().trim();
+
     out.push({
       sourceId: id,
       url: new URL(href, "https://www.ss.com").href,
-      title: `${label} ${link.text().trim().slice(0, 120)}`,
+      title: `${label} ${sellerText.slice(0, 120)}`,
       price,
       currency: "EUR",
       year: yearCell ? parseYear(yearCell) : undefined,
       mileageKm: mileageCell ? parseMileage(mileageCell) : undefined,
+      // The list page has no spec columns for these, so they come out of the
+      // seller's own text when mentioned.
+      fuel: parseFuel(sellerText),
+      transmission: parseTransmission(sellerText),
+      powerKw: parsePower(sellerText),
       imageUrl: $tr.find("img.isfoto").attr("src"),
-      snippet: link.text().trim(),
+      snippet: sellerText,
     });
   });
 

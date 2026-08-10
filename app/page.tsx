@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { clearFlag, hideListing, starListing } from "./actions";
+import { FilterForm } from "./filter-form";
+import { ListingCard, type CardData } from "./listing-card";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +9,13 @@ const SORTS: Record<string, string> = {
   price: "l.price_eur asc",
   newest: "l.first_seen desc",
   mileage: "l.mileage_km asc nulls last",
+  power: "l.power_kw desc nulls last",
+  year: "l.year desc nulls last",
 };
 
 const COUNTRIES = ["EE", "LV", "LT", "FI", "PL", "SK", "DE"];
+const FUELS = ["diesel", "petrol", "lpg", "hybrid", "electric"];
+const GEARBOXES = ["manual", "automatic"];
 
 type Row = {
   id: string;
@@ -25,6 +30,7 @@ type Row = {
   mileage_km: number | null;
   fuel: string | null;
   transmission: string | null;
+  power_kw: number | null;
   price_eur: string;
   location: string | null;
   image_url: string | null;
@@ -38,6 +44,7 @@ type Row = {
   price_delta_pct: string | null;
   landed_cost_eur: string | null;
   flag: string | null;
+  opened_at: string | null;
   first_price: string | null;
 };
 
@@ -46,45 +53,105 @@ function eur(value: string | number | null | undefined) {
   return `${Math.round(Number(value)).toLocaleString("en-US").replace(/,/g, " ")} €`;
 }
 
-function scoreColor(score: number) {
-  if (score >= 75) return "bg-green-600";
-  if (score >= 55) return "bg-yellow-600";
-  return "bg-neutral-700";
+function num(value: string | string[] | undefined) {
+  const n = parseInt(String(value ?? ""), 10);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }
+
+function ago(date: string) {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(date).getTime()) / 60000));
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  return hours < 48 ? `${hours} h ago` : `${Math.round(hours / 24)} d ago`;
+}
+
+function toCard(r: Row, dayAgo: number): CardData {
+  const chips: string[] = [];
+  chips.push(`${r.make} ${r.model}${r.generation ? ` ${r.generation}` : ""}`);
+  if (r.year) chips.push(String(r.year));
+  if (r.mileage_km) chips.push(`${Math.round(r.mileage_km / 1000)} tkm`);
+  if (r.power_kw) chips.push(`${r.power_kw} kW / ${Math.round(r.power_kw / 0.7355)} hp`);
+  if (r.fuel) chips.push(r.fuel);
+  if (r.transmission) chips.push(r.transmission);
+  chips.push(r.location ? `${r.country} · ${r.location.slice(0, 24)}` : r.country);
+  chips.push(r.source);
+
+  const dropped = r.first_price != null && Number(r.price_eur) < Number(r.first_price) - 1;
+
+  return {
+    id: r.id,
+    url: r.url,
+    title: r.title,
+    chips,
+    price: eur(r.price_eur),
+    landed: r.landed_cost_eur ? eur(r.landed_cost_eur) : null,
+    median:
+      r.market_median_eur && r.price_delta_pct
+        ? `${Math.round(Number(r.price_delta_pct))}% vs median ${eur(r.market_median_eur)}`
+        : null,
+    medianNegative: Number(r.price_delta_pct ?? 0) < 0,
+    score: r.score,
+    isNew: new Date(r.first_seen).getTime() > dayAgo,
+    priceDrop: dropped ? `${eur(r.first_price)} → ${eur(r.price_eur)}` : null,
+    imageUrl: r.image_url,
+    verdict: r.verdict,
+    aiScore: r.ai_score,
+    risks: r.risks ?? [],
+    inspect: r.inspect ?? [],
+    flag: r.flag,
+    openedAt: r.opened_at,
+  };
+}
+
+const field =
+  "shrink-0 rounded-lg border border-neutral-800 bg-neutral-900/80 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500";
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
+  const pick = (key: string, allowed: string[]) =>
+    allowed.includes(String(params[key])) ? String(params[key]) : "";
+
   const sort = SORTS[String(params.sort)] ? String(params.sort) : "score";
-  const country = COUNTRIES.includes(String(params.country)) ? String(params.country) : "";
+  const country = pick("country", COUNTRIES);
+  const fuel = pick("fuel", FUELS);
+  const gearbox = pick("gearbox", GEARBOXES);
   const model = typeof params.model === "string" ? params.model : "";
   const band = params.band === "all" ? "all" : "budget";
-  const view = params.view === "starred" ? "starred" : params.view === "hidden" ? "hidden" : "main";
+  const view =
+    params.view === "starred" ? "starred" : params.view === "hidden" ? "hidden" : "main";
+  const yearFrom = num(params.yearFrom);
+  const yearTo = num(params.yearTo);
+  const powerMin = num(params.powerMin);
 
   const sql = db();
   const where: string[] = ["l.is_active"];
   const args: unknown[] = [];
+  const add = (clause: (i: number) => string, value: unknown) => {
+    args.push(value);
+    where.push(clause(args.length));
+  };
 
   if (view === "main") where.push("(f.flag is null or f.flag = 'starred')");
   if (view === "starred") where.push("f.flag = 'starred'");
   if (view === "hidden") where.push("f.flag = 'hidden'");
   if (band === "budget" && view === "main")
     where.push("coalesce(e.landed_cost_eur, l.price_eur) between 3500 and 13000");
-  if (country) {
-    args.push(country);
-    where.push(`l.country = $${args.length}`);
-  }
-  if (model) {
-    args.push(`%${model}%`);
-    where.push(`(l.make || ' ' || l.model) ilike $${args.length}`);
-  }
+
+  if (country) add((i) => `l.country = $${i}`, country);
+  if (model) add((i) => `(l.make || ' ' || l.model) ilike $${i}`, `%${model}%`);
+  if (fuel) add((i) => `l.fuel = $${i}`, fuel);
+  if (gearbox) add((i) => `l.transmission = $${i}`, gearbox);
+  if (yearFrom) add((i) => `l.year >= $${i}`, yearFrom);
+  if (yearTo) add((i) => `l.year <= $${i}`, yearTo);
+  if (powerMin) add((i) => `l.power_kw >= $${i}`, powerMin);
 
   const rows = (await sql.query(
     `select l.id, l.source, l.country, l.url, l.title, l.make, l.model, l.generation,
-            l.year, l.mileage_km, l.fuel, l.transmission, l.price_eur, l.location,
-            l.image_url, l.first_seen,
+            l.year, l.mileage_km, l.fuel, l.transmission, l.power_kw, l.price_eur,
+            l.location, l.image_url, l.first_seen,
             e.score, e.ai_score, e.verdict, e.risks, e.inspect,
             e.market_median_eur, e.price_delta_pct, e.landed_cost_eur,
-            f.flag,
+            f.flag, f.opened_at,
             (select ph.price_eur from price_history ph
               where ph.listing_id = l.id order by ph.seen_at asc limit 1) as first_price
      from listings l
@@ -100,172 +167,119 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     `select distinct make || ' ' || model as name from listings where is_active order by 1`,
   )) as { name: string }[];
 
+  const lastScan = (await sql.query(
+    `select finished_at from scan_runs order by id desc limit 1`,
+  )) as { finished_at: string }[];
+
   const dayAgo = Date.now() - 24 * 3600 * 1000;
+  const cards = rows.map((r) => toCard(r, dayAgo));
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 p-4 sm:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-neutral-800 pb-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Offroad Deals</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {rows.length} listings · EE LV LT FI PL SK DE · refreshed hourly
-          </p>
+    <div className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-950 to-black">
+      <header className="sticky top-0 z-10 border-b border-neutral-800/70 bg-neutral-950/80 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold tracking-tight">
+              Offroad<span className="text-emerald-500">Deals</span>
+            </h1>
+            <p className="truncate text-xs text-neutral-500">
+              {cards.length} shown · Toyota &amp; Subaru · 7 countries
+              {lastScan[0] ? ` · scanned ${ago(lastScan[0].finished_at)}` : ""}
+            </p>
+          </div>
+          <nav className="flex rounded-lg border border-neutral-800 bg-neutral-900/80 p-0.5 text-sm">
+            {(["main", "starred", "hidden"] as const).map((v) => (
+              <a
+                key={v}
+                href={`/?view=${v}`}
+                className={`rounded-md px-3 py-1.5 transition-colors ${
+                  view === v
+                    ? "bg-neutral-100 font-medium text-neutral-900"
+                    : "text-neutral-400 hover:text-neutral-200"
+                }`}
+              >
+                {v === "main" ? "Deals" : v === "starred" ? "★" : "Hidden"}
+              </a>
+            ))}
+          </nav>
         </div>
-        <nav className="flex gap-2 text-sm">
-          {(["main", "starred", "hidden"] as const).map((v) => (
-            <a
-              key={v}
-              href={`/?view=${v}`}
-              className={`rounded-md px-3 py-1.5 ${view === v ? "bg-neutral-100 text-neutral-900" : "bg-neutral-900 text-neutral-300 hover:bg-neutral-800"}`}
-            >
-              {v === "main" ? "Deals" : v === "starred" ? "Starred" : "Hidden"}
-            </a>
-          ))}
-        </nav>
       </header>
 
-      <form className="mt-4 flex flex-wrap items-center gap-2 text-sm" method="get">
-        <input type="hidden" name="view" value={view} />
-        <select name="sort" defaultValue={sort} className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5">
-          <option value="score">Best score</option>
-          <option value="price">Cheapest</option>
-          <option value="newest">Newest</option>
-          <option value="mileage">Lowest km</option>
-        </select>
-        <select name="country" defaultValue={country} className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5">
-          <option value="">All countries</option>
-          {COUNTRIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
+      <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-4">
+        <FilterForm>
+          <input type="hidden" name="view" value={view} />
+          <select name="sort" defaultValue={sort} className={field} aria-label="Sort">
+            <option value="score">Best score</option>
+            <option value="price">Cheapest</option>
+            <option value="newest">Newest listed</option>
+            <option value="mileage">Lowest km</option>
+            <option value="power">Most power</option>
+            <option value="year">Newest year</option>
+          </select>
+          <select name="model" defaultValue={model} className={`${field} max-w-44`} aria-label="Model">
+            <option value="">All models</option>
+            {models.map((m) => (
+              <option key={m.name} value={m.name}>{m.name}</option>
+            ))}
+          </select>
+          <select name="fuel" defaultValue={fuel} className={field} aria-label="Fuel">
+            <option value="">Any fuel</option>
+            {FUELS.map((f) => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+          <select name="gearbox" defaultValue={gearbox} className={field} aria-label="Gearbox">
+            <option value="">Any gearbox</option>
+            {GEARBOXES.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+          <select name="country" defaultValue={country} className={field} aria-label="Country">
+            <option value="">All countries</option>
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <input
+            type="number" name="yearFrom" placeholder="year from" min={1960} max={2030}
+            defaultValue={yearFrom ?? ""} className={`${field} w-24`}
+          />
+          <input
+            type="number" name="yearTo" placeholder="year to" min={1960} max={2030}
+            defaultValue={yearTo ?? ""} className={`${field} w-24`}
+          />
+          <input
+            type="number" name="powerMin" placeholder="min kW" min={20} max={600}
+            defaultValue={powerMin ?? ""} className={`${field} w-24`}
+          />
+          <select name="band" defaultValue={band} className={field} aria-label="Price band">
+            <option value="budget">3.5k-13k landed</option>
+            <option value="all">All prices</option>
+          </select>
+          <a
+            href={`/?view=${view}`}
+            className="shrink-0 self-center px-2 text-sm text-neutral-500 hover:text-neutral-300"
+          >
+            reset
+          </a>
+        </FilterForm>
+
+        <ul className="mt-4 space-y-3">
+          {cards.map((card) => (
+            <ListingCard key={card.id} card={card} />
           ))}
-        </select>
-        <select name="model" defaultValue={model} className="max-w-48 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5">
-          <option value="">All models</option>
-          {models.map((m) => (
-            <option key={m.name} value={m.name}>{m.name}</option>
-          ))}
-        </select>
-        <select name="band" defaultValue={band} className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5">
-          <option value="budget">Budget 3.5k-13k landed</option>
-          <option value="all">All prices</option>
-        </select>
-        <button className="rounded-md bg-neutral-100 px-3 py-1.5 font-medium text-neutral-900 hover:bg-white">
-          Apply
-        </button>
-      </form>
+        </ul>
 
-      <ul className="mt-6 space-y-3">
-        {rows.map((r) => {
-          const isNew = new Date(r.first_seen).getTime() > dayAgo;
-          const dropped =
-            r.first_price != null && Number(r.price_eur) < Number(r.first_price) - 1;
-          return (
-            <li key={r.id} className="flex gap-4 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
-              <div className="hidden h-24 w-32 shrink-0 overflow-hidden rounded-md bg-neutral-900 sm:block">
-                {r.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={r.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
-                ) : null}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  {r.score != null ? (
-                    <span className={`rounded px-1.5 py-0.5 text-xs font-bold text-white ${scoreColor(r.score)}`}>
-                      {r.score}
-                    </span>
-                  ) : null}
-                  {isNew ? (
-                    <span className="rounded bg-blue-600 px-1.5 py-0.5 text-xs font-medium text-white">new</span>
-                  ) : null}
-                  {dropped ? (
-                    <span className="rounded bg-purple-600 px-1.5 py-0.5 text-xs font-medium text-white">
-                      price drop {eur(r.first_price)} → {eur(r.price_eur)}
-                    </span>
-                  ) : null}
-                  <a href={r.url} target="_blank" rel="noreferrer" className="truncate font-medium hover:underline">
-                    {r.title}
-                  </a>
-                </div>
-
-                <p className="mt-1 text-sm text-neutral-400">
-                  {r.make} {r.model}
-                  {r.generation ? ` · ${r.generation}` : ""}
-                  {r.year ? ` · ${r.year}` : ""}
-                  {r.mileage_km ? ` · ${Math.round(r.mileage_km / 1000)} tkm` : ""}
-                  {r.fuel ? ` · ${r.fuel}` : ""}
-                  {r.transmission ? ` · ${r.transmission}` : ""}
-                  {" · "}
-                  {r.country}
-                  {r.location ? ` (${r.location.slice(0, 30)})` : ""}
-                  {" · "}
-                  {r.source}
-                </p>
-
-                <p className="mt-1 text-sm">
-                  <span className="text-lg font-semibold">{eur(r.price_eur)}</span>
-                  {r.landed_cost_eur ? (
-                    <span className="text-neutral-500"> · ~{eur(r.landed_cost_eur)} landed</span>
-                  ) : null}
-                  {r.market_median_eur && r.price_delta_pct ? (
-                    <span className={Number(r.price_delta_pct) < 0 ? "text-green-500" : "text-neutral-500"}>
-                      {" "}· {Math.round(Number(r.price_delta_pct))}% vs median {eur(r.market_median_eur)}
-                    </span>
-                  ) : null}
-                </p>
-
-                {r.verdict ? (
-                  <details className="mt-2 text-sm">
-                    <summary className="cursor-pointer text-neutral-400 hover:text-neutral-200">
-                      AI verdict{r.ai_score != null ? ` (${r.ai_score}/100)` : ""}
-                    </summary>
-                    <div className="mt-2 space-y-2 rounded-md bg-neutral-900 p-3 text-neutral-300">
-                      <p>{r.verdict}</p>
-                      {r.risks?.length ? (
-                        <p className="text-red-400">Risks: {r.risks.join(" · ")}</p>
-                      ) : null}
-                      {r.inspect?.length ? (
-                        <p className="text-yellow-400">Inspect: {r.inspect.join(" · ")}</p>
-                      ) : null}
-                    </div>
-                  </details>
-                ) : null}
-              </div>
-
-              <div className="flex shrink-0 flex-col gap-1">
-                {r.flag ? (
-                  <form action={clearFlag}>
-                    <input type="hidden" name="id" value={r.id} />
-                    <button className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400 hover:bg-neutral-800" title="Restore">
-                      undo
-                    </button>
-                  </form>
-                ) : (
-                  <>
-                    <form action={starListing}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <button className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-yellow-500 hover:bg-neutral-800" title="Star">
-                        ★
-                      </button>
-                    </form>
-                    <form action={hideListing}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <button className="rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-500 hover:bg-neutral-800" title="Hide">
-                        ✕
-                      </button>
-                    </form>
-                  </>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      {rows.length === 0 ? (
-        <div className="mt-10 rounded-lg border border-dashed border-neutral-800 p-10 text-center text-sm text-neutral-500">
-          Nothing here. The next hourly scan may change that.
-        </div>
-      ) : null}
-    </main>
+        {cards.length === 0 ? (
+          <div className="mt-16 flex flex-col items-center gap-2 text-center">
+            <p className="text-3xl">🏜️</p>
+            <p className="text-sm font-medium text-neutral-300">Nothing matches these filters</p>
+            <p className="text-xs text-neutral-500">
+              Loosen a filter, or wait for the next hourly scan.
+            </p>
+          </div>
+        ) : null}
+      </main>
+    </div>
   );
 }

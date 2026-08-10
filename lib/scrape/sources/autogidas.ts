@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { brightdataAvailable, fetchViaBrightdata } from "../brightdata";
-import { parseFuel, parseMileage, parsePrice, parseTransmission } from "../parse";
+import { parseFuel, parseMileage, parsePower, parsePrice, parseTransmission } from "../parse";
 import type { RawListing, Source } from "../types";
 
 /**
@@ -37,6 +37,7 @@ export function parseList(html: string): RawListing[] {
       mileageKm: /km/.test(desc) ? parseMileage(desc.match(/\d[\d\s]*km/)?.[0] ?? "") : undefined,
       fuel: parseFuel(desc),
       transmission: parseTransmission(desc),
+      powerKw: parsePower(desc),
       imageUrl: $a.find("img.js-image").first().attr("src"),
       snippet: desc.slice(0, 200),
     });

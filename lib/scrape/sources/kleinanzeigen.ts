@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { fetchPage } from "../http";
-import { parseMileage, parsePrice, parseYear } from "../parse";
+import { parseFuel, parseMileage, parsePower, parsePrice, parseTransmission, parseYear } from "../parse";
 import type { RawListing, Source } from "../types";
 
 /**
@@ -48,6 +48,9 @@ export function parseList(html: string): RawListing[] {
       currency: "EUR",
       year: parseYear(tags) ?? parseYear(title),
       mileageKm: /km/i.test(tags) ? parseMileage(tags.match(/[\d.,\s]+km/i)?.[0] ?? "") : undefined,
+      fuel: parseFuel(`${tags} ${title}`),
+      transmission: parseTransmission(`${tags} ${title}`),
+      powerKw: parsePower(`${tags} ${title}`),
       location: $a.find(".aditem-main--top--left").text().trim().replace(/\s+/g, " "),
       imageUrl: $a.find("img").first().attr("src"),
       snippet: $a.find(".aditem-main--middle--description").text().trim().slice(0, 200),

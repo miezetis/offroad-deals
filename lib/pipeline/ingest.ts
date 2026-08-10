@@ -52,15 +52,16 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
       await sql.query(
         `insert into listings
            (id, source, country, url, title, make, model, generation, year,
-            mileage_km, fuel, transmission, price_eur, price_original, currency,
-            location, image_url, description, dedupe_key, raw)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+            mileage_km, fuel, transmission, power_kw, price_eur, price_original,
+            currency, location, image_url, description, dedupe_key, raw)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
         [
           id, source.name, source.country, row.url, row.title.slice(0, 300),
           vehicle.make, vehicle.model, vehicle.generation ?? null, row.year ?? null,
           row.mileageKm ?? null, row.fuel ?? null, row.transmission ?? null,
+          row.powerKw ?? null,
           priceEur, row.price, row.currency,
-          row.location ?? null, row.imageUrl ?? null, row.snippet ?? null,
+          row.location ?? null, row.imageUrl || null, row.snippet ?? null,
           dedupeKey(vehicle.make, vehicle.model, row.year, row.mileageKm, priceEur),
           JSON.stringify({ desirability: vehicle.desirability, note: vehicle.note ?? null }),
         ],
@@ -72,9 +73,25 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
       stats.inserted++;
     } else {
       const oldPrice = Number(existing[0].price_eur);
+      // coalesce so a source that improves its parsing backfills existing
+      // rows, while a source that cannot see a field never wipes it.
       await sql.query(
-        "update listings set last_seen = now(), is_active = true, price_eur = $2, url = $3 where id = $1",
-        [id, priceEur, row.url],
+        `update listings set
+           last_seen = now(), is_active = true, price_eur = $2, url = $3,
+           year = coalesce($4, year),
+           mileage_km = coalesce($5, mileage_km),
+           fuel = coalesce($6, fuel),
+           transmission = coalesce($7, transmission),
+           power_kw = coalesce($8, power_kw),
+           image_url = coalesce($9, image_url),
+           generation = coalesce($10, generation)
+         where id = $1`,
+        [
+          id, priceEur, row.url,
+          row.year ?? null, row.mileageKm ?? null, row.fuel ?? null,
+          row.transmission ?? null, row.powerKw ?? null, row.imageUrl || null,
+          vehicle.generation ?? null,
+        ],
       );
       if (Math.abs(oldPrice - priceEur) >= 1) {
         await sql.query(

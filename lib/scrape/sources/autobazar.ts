@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { fetchPage } from "../http";
-import { parseFuel, parseMileage, parsePrice, parseTransmission, parseYear } from "../parse";
+import { parseFuel, parseMileage, parsePower, parsePrice, parseTransmission, parseYear } from "../parse";
 import type { RawListing, Source } from "../types";
 
 /**
@@ -47,6 +47,7 @@ export function parseList(html: string): RawListing[] {
       mileageKm: parseMileage(meta.match(/\d[\d\s.,]*\s*km/i)?.[0] ?? ""),
       fuel: parseFuel(meta),
       transmission: parseTransmission(meta),
+      powerKw: parsePower(meta),
       imageUrl: $i.find("img").first().attr("src"),
     });
   });

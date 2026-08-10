@@ -48,7 +48,9 @@ export const VEHICLES: VehicleSpec[] = [
       "kdj120", "grj120", "rzj", "prado",
     ],
     generations: [
-      { name: "J7", from: 1984, to: 2004, bonus: 2, hints: ["70", "71", "73", "76", "78", "79", "lj70", "lj71", "lj73", "lj77", "bj70", "bj73", "bj74", "hzj70", "hzj73", "hzj75", "hzj77", "kzj70", "kzj73", "kzj77", "pzj70"], note: "Solid axles, the purist choice" },
+      { name: "J4", from: 1960, to: 1984, bonus: 2, hints: ["40", "42", "45", "47", "bj40", "bj42", "bj45", "bj46", "fj40", "fj43", "fj45", "hj45", "hj47"], note: "The vintage classic, collector territory" },
+      { name: "J6", from: 1980, to: 1990, bonus: 1, hints: ["60", "61", "62", "fj60", "fj62", "hj60", "hj61"] },
+      { name: "J7", from: 1984, to: 2004, bonus: 2, hints: ["70", "71", "73", "76", "78", "79", "lj70", "lj71", "lj73", "lj77", "bj70", "bj73", "bj74", "hzj70", "hzj73", "hzj75", "hzj77", "kzj70", "kzj73", "kzj77", "pzj70", "kj70", "kj73", "kj77", "lj72", "bj71", "bj75", "hj75"], note: "Solid axles, the purist choice" },
       { name: "J8 (80-series)", from: 1990, to: 1997, bonus: 3, hints: ["80", "hdj80", "hzj80", "fzj80"], note: "Coil sprung solid axles, triple locked on the best trims" },
       { name: "J9 (Prado 90)", from: 1996, to: 2002, bonus: 2, hints: ["90", "95", "kzj90", "kzj95", "vzj95"], note: "The value sweet spot in this budget" },
       { name: "J10 (100-series)", from: 1998, to: 2007, bonus: 1, hints: ["100", "105", "hdj100", "uzj100"], note: "IFS on petrol V8s, live axle on 105" },

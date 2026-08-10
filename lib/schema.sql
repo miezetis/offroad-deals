@@ -62,12 +62,20 @@ create index if not exists evaluations_score_idx on evaluations (score desc);
 -- (price cut, edited ad) the verdict is stale and gets re-run.
 alter table evaluations add column if not exists ai_hash text;
 
--- Single-user state: hidden and starred listings.
+-- Engine power, always stored in kW regardless of the unit the site used.
+alter table listings add column if not exists power_kw int;
+
+-- Single-user state: hidden, starred, and whether the ad has been opened.
+-- flag and opened_at are orthogonal, so flag is nullable: a row can exist
+-- purely to record that a listing was viewed.
 create table if not exists user_flags (
   listing_id text primary key references listings (id) on delete cascade,
-  flag       text not null,
+  flag       text,
   created_at timestamptz not null default now()
 );
+
+alter table user_flags alter column flag drop not null;
+alter table user_flags add column if not exists opened_at timestamptz;
 
 -- One row per scan run: what each source returned, for drift detection.
 create table if not exists scan_runs (
