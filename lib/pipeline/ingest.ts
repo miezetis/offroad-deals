@@ -56,7 +56,7 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
             currency, location, image_url, description, dedupe_key, raw)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
         [
-          id, source.name, source.country, row.url, row.title.slice(0, 300),
+          id, source.name, row.country ?? source.country, row.url, row.title.slice(0, 300),
           vehicle.make, vehicle.model, vehicle.generation ?? null, row.year ?? null,
           row.mileageKm ?? null, row.fuel ?? null, row.transmission ?? null,
           row.powerKw ?? null,

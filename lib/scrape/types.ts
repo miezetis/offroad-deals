@@ -14,6 +14,12 @@ export type RawListing = {
   /** Engine power in kW, normalised from whatever unit the site used. */
   powerKw?: number;
   location?: string;
+  /**
+   * Overrides the source's default country for this one row. Marktplaats.nl
+   * carries the occasional cross-border ad (a Dutch exporter's stock parked
+   * abroad); when the listing states a different country, that wins.
+   */
+  country?: string;
   imageUrl?: string;
   /** Short teaser text when the search page carries one. */
   snippet?: string;

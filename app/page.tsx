@@ -13,7 +13,7 @@ const SORTS: Record<string, string> = {
   year: "l.year desc nulls last",
 };
 
-const COUNTRIES = ["EE", "LV", "LT", "FI", "PL", "SK", "DE"];
+const COUNTRIES = ["EE", "LV", "LT", "FI", "PL", "SK", "DE", "NL", "IT"];
 const FUELS = ["diesel", "petrol", "lpg", "hybrid", "electric"];
 const GEARBOXES = ["manual", "automatic"];
 
@@ -183,7 +183,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               Offroad<span className="text-emerald-500">Deals</span>
             </h1>
             <p className="truncate text-xs text-neutral-500">
-              {cards.length} shown · Toyota &amp; Subaru · 7 countries
+              {cards.length} shown · 9 countries
               {lastScan[0] ? ` · scanned ${ago(lastScan[0].finished_at)}` : ""}
             </p>
           </div>

@@ -5,12 +5,15 @@ import { autogidas } from "./autogidas";
 import { autoplius } from "./autoplius";
 import { bazos } from "./bazos";
 import { kleinanzeigen } from "./kleinanzeigen";
+import { marktplaats } from "./marktplaats";
 import { nettiauto } from "./nettiauto";
 import { otomoto } from "./otomoto";
 import { sslv } from "./sslv";
+import { subito } from "./subito";
 
-// The last three go through Bright Data and quietly no-op without the key.
+// autoplius/auto24/autogidas/subito go through Bright Data and quietly
+// no-op without the key.
 export const SOURCES: Source[] = [
-  sslv, otomoto, kleinanzeigen, bazos, nettiauto, autobazar,
-  autoplius, auto24, autogidas,
+  sslv, otomoto, kleinanzeigen, bazos, nettiauto, autobazar, marktplaats,
+  autoplius, auto24, autogidas, subito,
 ];

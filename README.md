@@ -13,12 +13,17 @@ Driving every filter and score in the app:
 | | |
 |---|---|
 | Based in | Lithuania |
-| Will travel | Anywhere in EE / LV / LT / FI / PL / SK / DE |
+| Will travel | Anywhere in EE / LV / LT / FI / PL / SK / DE / NL / IT |
 | Budget | 5,000 to 10,000 EUR (car only, before transport and registration) |
-| Vehicles | Toyota and Subaru only: Land Cruiser, Hilux Surf / 4Runner, RAV4, Forester, Outback |
+| Vehicles | Wide list of body-on-frame 4x4s, pickups, one van, and Subaru wagons, see `lib/vehicles.ts` |
 | Fuel | Diesel preferred, petrol and LPG acceptable |
 | Transmission | Manual preferred (scoring bonus, not a hard filter) |
 | Condition floor | Minor work acceptable, no rotten frame and no blown engine |
+
+Scope history: narrowed to Toyota/Subaru only on 2026-08-10, reopened the
+next day to the full list plus pickups (Hilux, D-Max, L200, Tacoma) and a
+van (Delica). Each change is its own commit if you need to see exactly what
+changed.
 
 ## Architecture
 
@@ -66,6 +71,8 @@ returns real listing data or gets challenged.
 | EE | soov.ee | not scraped | Cloudflare; auto24 covers EE |
 | PL | olx.pl | not scraped | CloudFront 403; otomoto covers PL |
 | DE | mobile.de | not scraped | hard block; kleinanzeigen covers DE |
+| NL | marktplaats.nl | works | `__NEXT_DATA__` JSON, per-keyword search. Occasional cross-border ad; `RawListing.country` overrides the source default when the listing states one of our tracked countries |
+| IT | subito.it | via Bright Data | `__NEXT_DATA__` JSON (`initialState.items.originalList`), richest spec data of any source. Pagination param is a best guess with a duplicate-detection safety check |
 
 The Bright Data trio no-ops cleanly when `BRIGHTDATA_API_KEY` is unset. Feed
 strategy keeps paid volume at roughly 8 requests per hourly run.

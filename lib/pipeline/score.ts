@@ -9,7 +9,7 @@ import { db } from "../db";
 
 /** Rough door-to-door transport into Lithuania, EUR. */
 const TRANSPORT_EUR: Record<string, number> = {
-  LT: 0, LV: 150, EE: 250, PL: 300, SK: 450, DE: 700, FI: 500,
+  LT: 0, LV: 150, EE: 250, PL: 300, SK: 450, DE: 700, FI: 500, NL: 850, IT: 1100,
 };
 /** LT registration, plates, mandatory checks for an import. */
 const REGISTRATION_EUR = 150;
