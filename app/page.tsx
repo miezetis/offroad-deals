@@ -307,7 +307,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             <p className="text-3xl">🏜️</p>
             <p className="text-sm font-medium text-neutral-300">Nothing matches these filters</p>
             <p className="text-xs text-neutral-500">
-              Loosen a filter, or wait for the next hourly scan.
+              Loosen a filter, or wait for the next scan.
             </p>
           </div>
         ) : null}

@@ -2,8 +2,10 @@ name: scan
 
 on:
   schedule:
-    # Hourly shallow scan (first page per category).
-    - cron: "10 * * * *"
+    # Shallow scan every 2 hours (first page per category). Cars sit listed
+    # for days, so twice-hourly bought almost nothing and doubled both
+    # Actions minutes and paid Bright Data requests.
+    - cron: "10 */2 * * *"
     # Nightly deep sweep at 02:40 UTC keeps last_seen honest for whole
     # categories, which is what sold-car detection depends on.
     - cron: "40 2 * * *"
@@ -13,7 +15,7 @@ on:
         description: "Pages per category"
         default: "1"
 
-# A slow run and the next hourly tick must never write concurrently.
+# A slow run and the next scheduled tick must never write concurrently.
 concurrency:
   group: scan
   cancel-in-progress: false

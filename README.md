@@ -1,10 +1,16 @@
 # Offroad Deals
 
-Private tool that scans Baltic and Central European classified sites hourly for
-underpriced body-on-frame 4x4s, scores them against a self-built market
-reference, and lists the best ones.
+Scans European classified sites every two hours for underpriced 4x4s, scores
+them against a self-built market reference, and lists the best ones.
 
-Live at `offroad.miezetis.com`, behind a password.
+The code is public; the running instance is not. It lives at
+`offroad.miezetis.com` behind a password, and its database, listings, and all
+credentials are private. Nothing here is secret: no keys are committed, and
+every secret is injected at runtime from GitHub Actions secrets and Vercel
+environment variables.
+
+Built for one specific buyer (see the profile below), so the model whitelist
+and scoring weights are opinionated rather than general-purpose.
 
 ## Buyer profile
 
@@ -29,7 +35,7 @@ changed.
 
 - **Site**: Next.js 16 App Router on Vercel, reads Postgres directly.
   Password gate in `proxy.ts`, star/hide via server actions.
-- **Scraper**: TypeScript, hourly on GitHub Actions (`scan.yml`). Hourly runs
+- **Scraper**: TypeScript, every 2 hours on GitHub Actions (`scan.yml`). Runs
   read one page per model category; a nightly deep sweep (02:40 UTC, 6 pages)
   keeps `last_seen` honest so vanished ads get marked inactive after 50h.
 - **Database**: Neon Postgres. `listings`, `price_history`, `evaluations`,
@@ -75,7 +81,7 @@ returns real listing data or gets challenged.
 | IT | subito.it | via Bright Data | `__NEXT_DATA__` JSON (`initialState.items.originalList`), richest spec data of any source. Pagination param is a best guess with a duplicate-detection safety check |
 
 The Bright Data trio no-ops cleanly when `BRIGHTDATA_API_KEY` is unset. Feed
-strategy keeps paid volume at roughly 8 requests per hourly run.
+strategy keeps paid volume modest per run.
 
 ## Environment variables
 

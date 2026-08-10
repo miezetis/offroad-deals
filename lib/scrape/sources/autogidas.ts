@@ -5,7 +5,7 @@ import type { RawListing, Source } from "../types";
 
 /**
  * autogidas.lt (Lithuania), behind Cloudflare, fetched via Bright Data.
- * Default ordering is bump-newest, which suits an hourly diff. Year comes
+ * Default ordering is bump-newest, which suits a periodic diff. Year comes
  * from the card description ("2002 m.").
  */
 const PAGES_PER_DEPTH = 2;

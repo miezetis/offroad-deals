@@ -1,6 +1,6 @@
 /**
- * The full pipeline, run hourly by GitHub Actions.
- * SCAN_DEPTH=1 for hourly runs, 6 for the nightly deep sweep that keeps
+ * The full pipeline, run every 2 hours by GitHub Actions.
+ * SCAN_DEPTH=1 for the routine runs, 6 for the nightly deep sweep that keeps
  * last_seen honest across whole categories.
  *
  * Emits GitHub Actions outputs (new_deals / health_warnings) that the

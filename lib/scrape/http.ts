@@ -1,6 +1,6 @@
 /**
  * Polite fetch: browser-shaped headers, one request at a time per host with a
- * randomised gap, bounded retries. Keeps us a well-behaved hourly visitor
+ * randomised gap, bounded retries. Keeps us a well-behaved periodic visitor
  * rather than something worth blocking.
  */
 

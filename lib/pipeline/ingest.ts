@@ -107,7 +107,7 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
 }
 
 /**
- * Hourly scans only read the first page per category, so an ad quietly slides
+ * Routine scans only read the first page per category, so an ad quietly slides
  * out of view long before it is sold. Only the daily deep sweep sees the full
  * category, hence the generous two-missed-sweeps window.
  */
