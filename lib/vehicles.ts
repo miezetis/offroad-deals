@@ -2,10 +2,10 @@
  * The whitelist. Anything that does not match one of these is discarded before
  * it ever reaches the database.
  *
- * Scope: Toyota and Subaru only, per the owner's call on 2026-08-10. Land
- * Cruiser and Surf/4Runner are the serious offroaders, RAV4 and the Subarus
- * cover light offroad and overlanding. The old wide list (Pajero, Patrol,
- * Jimny, ...) lives in git history if the scope ever widens again.
+ * Scope as of 2026-08-11: the full body-on-frame/overland list, plus pickups
+ * and vans, plus Subaru's unibody wagons. Widened twice by the owner: first
+ * narrowed to Toyota/Subaru only, then reopened to include pickups (Hilux,
+ * D-Max, L200, Tacoma), a van (Delica), and two more Subarus (Impreza, Baja).
  *
  * `aliases` are matched against a normalised (lowercased, de-accented) title.
  * Longer aliases win.
@@ -71,6 +71,20 @@ export const VEHICLES: VehicleSpec[] = [
   },
   {
     make: "Toyota",
+    model: "Hilux",
+    desirability: 8,
+    aliases: ["hilux"],
+    note: "The pickup, not the Surf/4Runner. Widely regarded as nearly indestructible",
+  },
+  {
+    make: "Toyota",
+    model: "Tacoma",
+    desirability: 7,
+    aliases: ["tacoma"],
+    note: "US-market pickup, genuinely great but rare and pricier in Europe; parts mean a wait",
+  },
+  {
+    make: "Toyota",
     model: "RAV4",
     desirability: 5,
     aliases: ["rav4", "rav 4", "rav-4"],
@@ -103,6 +117,233 @@ export const VEHICLES: VehicleSpec[] = [
       { name: "BP", from: 2003, to: 2009, bonus: 1, note: "3.0R six is smooth, EJ25 head gaskets again" },
       { name: "BR", from: 2009, to: 2014, bonus: 1 },
     ],
+  },
+  {
+    make: "Subaru",
+    model: "Impreza",
+    desirability: 4,
+    aliases: ["impreza"],
+    note: "Unibody AWD, gravel and snow only, no real ground clearance for trails",
+  },
+  {
+    make: "Subaru",
+    model: "Baja",
+    desirability: 4,
+    aliases: ["baja"],
+    note: "Rare unibody pickup on the Outback platform. Very few will ever surface in Europe",
+  },
+  {
+    make: "Mitsubishi",
+    model: "Pajero",
+    desirability: 9,
+    aliases: ["pajero", "shogun", "montero", "pajero ii", "pajero 2", "pajero iii", "pajero 3", "pajero iv", "pajero 4"],
+    generations: [
+      { name: "Mk2", from: 1991, to: 1999, bonus: 3, note: "4M40 diesel, cheap and tough" },
+      { name: "Mk3", from: 1999, to: 2006, bonus: 2, note: "Monocoque with integrated frame, still very capable" },
+      { name: "Mk4", from: 2006, to: 2021, bonus: 1 },
+    ],
+  },
+  {
+    make: "Mitsubishi",
+    model: "Pajero Sport",
+    desirability: 7,
+    aliases: ["pajero sport", "challenger", "montero sport", "nativa"],
+  },
+  {
+    make: "Mitsubishi",
+    model: "L200",
+    desirability: 6,
+    aliases: ["l200", "l 200", "triton", "strada"],
+    note: "Common, cheap to run, decent value pickup",
+  },
+  {
+    make: "Mitsubishi",
+    model: "Delica",
+    desirability: 8,
+    aliases: ["delica", "space gear", "l400", "l 400", "l300", "l 300"],
+    generations: [
+      { name: "L300", from: 1986, to: 1999, bonus: 1 },
+      { name: "L400 (Space Gear)", from: 1994, to: 2007, bonus: 2, note: "4x4 versions are an overlanding favourite" },
+      { name: "D5", from: 2007, to: 2019, bonus: 1 },
+    ],
+    note: "JDM import in most of Europe; check for a genuine 4x4 drivetrain, not the 2WD version",
+  },
+  {
+    make: "Nissan",
+    model: "Patrol",
+    desirability: 10,
+    aliases: ["patrol", "patrol gr", "safari", "y60", "y61", "gr y61", "gr y60"],
+    generations: [
+      { name: "Y60", from: 1987, to: 1997, bonus: 3, note: "Coil sprung solid axles" },
+      { name: "Y61", from: 1997, to: 2013, bonus: 3, note: "ZD30 needs care, TD42 is bulletproof" },
+    ],
+  },
+  {
+    make: "Nissan",
+    model: "Terrano II",
+    desirability: 6,
+    aliases: ["terrano", "terrano ii", "terrano 2"],
+    note: "Shares a platform with the Ford Maverick",
+  },
+  {
+    make: "Nissan",
+    model: "Pathfinder",
+    desirability: 6,
+    aliases: ["pathfinder", "r50", "r51"],
+    generations: [{ name: "R50", from: 1995, to: 2004, bonus: 1 }],
+  },
+  {
+    make: "Land Rover",
+    model: "Defender",
+    desirability: 10,
+    aliases: ["defender", "land rover 90", "land rover 110", "lr defender", "def 90", "def 110"],
+    note: "Rarely clears the budget in good condition, but worth catching when it does",
+  },
+  {
+    make: "Land Rover",
+    model: "Discovery",
+    desirability: 7,
+    aliases: ["discovery", "disco 1", "disco 2", "discovery i", "discovery ii", "discovery 1", "discovery 2"],
+    generations: [
+      { name: "Series I", from: 1989, to: 1998, bonus: 2 },
+      { name: "Series II", from: 1998, to: 2004, bonus: 1, note: "Watch the chassis rear crossmember" },
+    ],
+  },
+  {
+    make: "Land Rover",
+    model: "Range Rover Classic",
+    desirability: 7,
+    aliases: ["range rover classic", "range rover klasik"],
+  },
+  {
+    make: "Suzuki",
+    model: "Jimny",
+    desirability: 9,
+    aliases: ["jimny", "sn413"],
+    note: "Tiny, light, and astonishingly capable. Holds value hard",
+  },
+  {
+    make: "Suzuki",
+    model: "Samurai",
+    desirability: 8,
+    aliases: ["samurai", "sj410", "sj413", "santana"],
+  },
+  {
+    make: "Suzuki",
+    model: "Vitara",
+    desirability: 6,
+    aliases: ["vitara", "escudo", "sidekick"],
+    note: "First generation only, later Grand Vitara is a separate entry",
+  },
+  {
+    make: "Suzuki",
+    model: "Grand Vitara",
+    desirability: 5,
+    aliases: ["grand vitara", "grandvitara", "grand-vitara"],
+    generations: [{ name: "Mk1", from: 1998, to: 2005, bonus: 2, note: "Body on frame. The 2005+ car is not" }],
+  },
+  {
+    make: "Isuzu",
+    model: "Trooper",
+    desirability: 7,
+    aliases: ["trooper", "bighorn", "monterey", "opel monterey"],
+    note: "Sold as Opel/Vauxhall Monterey and Honda Horizon",
+  },
+  {
+    make: "Isuzu",
+    model: "D-Max",
+    desirability: 7,
+    aliases: ["d-max", "d max", "dmax"],
+    note: "Solid modern pickup, good reliability record",
+  },
+  {
+    make: "Opel",
+    model: "Frontera",
+    desirability: 5,
+    aliases: ["frontera"],
+    note: "Isuzu underneath, cheap entry point, rust prone",
+  },
+  {
+    make: "Jeep",
+    model: "Wrangler",
+    desirability: 9,
+    aliases: ["wrangler", "yj", "tj", " jk ", "cj7", "cj-7"],
+    generations: [
+      { name: "YJ", from: 1986, to: 1995, bonus: 2 },
+      { name: "TJ", from: 1996, to: 2006, bonus: 3, note: "Coil sprung solid axles" },
+    ],
+  },
+  {
+    make: "SsangYong",
+    model: "Musso",
+    desirability: 6,
+    aliases: ["musso"],
+    note: "Mercedes engines and drivetrain, very cheap to buy",
+  },
+  {
+    make: "SsangYong",
+    model: "Korando",
+    desirability: 5,
+    aliases: ["korando"],
+  },
+  {
+    make: "SsangYong",
+    model: "Rexton",
+    desirability: 5,
+    aliases: ["rexton"],
+  },
+  {
+    make: "Hyundai",
+    model: "Terracan",
+    desirability: 6,
+    aliases: ["terracan"],
+  },
+  {
+    make: "Hyundai",
+    model: "Galloper",
+    desirability: 6,
+    aliases: ["galloper"],
+    note: "Licence-built Pajero Mk1",
+  },
+  {
+    make: "Kia",
+    model: "Sorento",
+    desirability: 5,
+    aliases: ["sorento"],
+    generations: [{ name: "BL", from: 2002, to: 2009, bonus: 2, note: "Body on frame. Later Sorentos are not" }],
+  },
+  {
+    make: "Ford",
+    model: "Maverick",
+    desirability: 5,
+    aliases: ["maverick"],
+    note: "Rebadged Nissan Terrano II",
+  },
+  {
+    make: "Ford",
+    model: "Explorer",
+    desirability: 5,
+    aliases: ["explorer"],
+    generations: [{ name: "Pre-2010", from: 1990, to: 2010, bonus: 1 }],
+  },
+  {
+    make: "Daihatsu",
+    model: "Rocky / Fourtrak",
+    desirability: 6,
+    aliases: ["fourtrak", "rocky", "taft"],
+  },
+  {
+    make: "Mercedes-Benz",
+    model: "G-Class",
+    desirability: 9,
+    aliases: ["g-klasse", "g klasse", "gelandewagen", "gelaendewagen", "g-class", "w460", "w461", "w463", "puch g"],
+  },
+  {
+    make: "UAZ",
+    model: "Hunter / 469",
+    desirability: 6,
+    aliases: ["uaz", "uaz hunter", "uaz 469", "uaz patriot", "469"],
+    note: "Crude, cheap, and genuinely capable. Parts are trivial in the Baltics",
   },
 ];
 

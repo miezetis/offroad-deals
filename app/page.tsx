@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { FilterForm } from "./filter-form";
+import { FilterField, FilterForm } from "./filter-form";
 import { ListingCard, type CardData } from "./listing-card";
 
 export const dynamic = "force-dynamic";
@@ -104,7 +104,7 @@ function toCard(r: Row, dayAgo: number): CardData {
 }
 
 const field =
-  "shrink-0 rounded-lg border border-neutral-800 bg-neutral-900/80 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500";
+  "w-full rounded-lg border border-neutral-800 bg-neutral-900/80 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500";
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
@@ -208,60 +208,89 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-4">
         <FilterForm>
           <input type="hidden" name="view" value={view} />
-          <select name="sort" defaultValue={sort} className={field} aria-label="Sort">
-            <option value="score">Best score</option>
-            <option value="price">Cheapest</option>
-            <option value="newest">Newest listed</option>
-            <option value="mileage">Lowest km</option>
-            <option value="power">Most power</option>
-            <option value="year">Newest year</option>
-          </select>
-          <select name="model" defaultValue={model} className={`${field} max-w-44`} aria-label="Model">
-            <option value="">All models</option>
-            {models.map((m) => (
-              <option key={m.name} value={m.name}>{m.name}</option>
-            ))}
-          </select>
-          <select name="fuel" defaultValue={fuel} className={field} aria-label="Fuel">
-            <option value="">Any fuel</option>
-            {FUELS.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
-          <select name="gearbox" defaultValue={gearbox} className={field} aria-label="Gearbox">
-            <option value="">Any gearbox</option>
-            {GEARBOXES.map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-          <select name="country" defaultValue={country} className={field} aria-label="Country">
-            <option value="">All countries</option>
-            {COUNTRIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <input
-            type="number" name="yearFrom" placeholder="year from" min={1960} max={2030}
-            defaultValue={yearFrom ?? ""} className={`${field} w-24`}
-          />
-          <input
-            type="number" name="yearTo" placeholder="year to" min={1960} max={2030}
-            defaultValue={yearTo ?? ""} className={`${field} w-24`}
-          />
-          <input
-            type="number" name="powerMin" placeholder="min kW" min={20} max={600}
-            defaultValue={powerMin ?? ""} className={`${field} w-24`}
-          />
-          <select name="band" defaultValue={band} className={field} aria-label="Price band">
-            <option value="budget">3.5k-13k landed</option>
-            <option value="all">All prices</option>
-          </select>
-          <a
-            href={`/?view=${view}`}
-            className="shrink-0 self-center px-2 text-sm text-neutral-500 hover:text-neutral-300"
-          >
-            reset
-          </a>
+
+          <FilterField label="Sort">
+            <select name="sort" defaultValue={sort} className={field}>
+              <option value="score">Best score</option>
+              <option value="price">Cheapest</option>
+              <option value="newest">Newest listed</option>
+              <option value="mileage">Lowest km</option>
+              <option value="power">Most power</option>
+              <option value="year">Newest year</option>
+            </select>
+          </FilterField>
+
+          <FilterField label="Model">
+            <select name="model" defaultValue={model} className={field}>
+              <option value="">All models</option>
+              {models.map((m) => (
+                <option key={m.name} value={m.name}>{m.name}</option>
+              ))}
+            </select>
+          </FilterField>
+
+          <FilterField label="Fuel">
+            <select name="fuel" defaultValue={fuel} className={field}>
+              <option value="">Any fuel</option>
+              {FUELS.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </FilterField>
+
+          <FilterField label="Gearbox">
+            <select name="gearbox" defaultValue={gearbox} className={field}>
+              <option value="">Any gearbox</option>
+              {GEARBOXES.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </FilterField>
+
+          <FilterField label="Country">
+            <select name="country" defaultValue={country} className={field}>
+              <option value="">All countries</option>
+              {COUNTRIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </FilterField>
+
+          <FilterField label="Price band">
+            <select name="band" defaultValue={band} className={field}>
+              <option value="budget">3.5k-13k landed</option>
+              <option value="all">All prices</option>
+            </select>
+          </FilterField>
+
+          <FilterField label="Year">
+            <div className="flex gap-1.5">
+              <input
+                type="number" name="yearFrom" placeholder="from" min={1960} max={2030}
+                defaultValue={yearFrom ?? ""} className={field}
+              />
+              <input
+                type="number" name="yearTo" placeholder="to" min={1960} max={2030}
+                defaultValue={yearTo ?? ""} className={field}
+              />
+            </div>
+          </FilterField>
+
+          <FilterField label="Min power">
+            <input
+              type="number" name="powerMin" placeholder="kW" min={20} max={600}
+              defaultValue={powerMin ?? ""} className={field}
+            />
+          </FilterField>
+
+          <FilterField label=" ">
+            <a
+              href={`/?view=${view}`}
+              className="flex w-full items-center justify-center rounded-lg border border-neutral-800 px-2.5 py-1.5 text-sm text-neutral-400 hover:border-neutral-600 hover:text-neutral-200"
+            >
+              Reset
+            </a>
+          </FilterField>
         </FilterForm>
 
         <ul className="mt-4 space-y-3">
