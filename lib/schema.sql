@@ -1,0 +1,59 @@
+create table if not exists listings (
+  id             text primary key,
+  source         text        not null,
+  country        text        not null,
+  url            text        not null,
+  title          text        not null,
+
+  make           text,
+  model          text,
+  generation     text,
+  year           int,
+  mileage_km     int,
+  fuel           text,
+  transmission   text,
+
+  price_eur      numeric(10, 2),
+  price_original numeric(12, 2),
+  currency       text,
+
+  location       text,
+  image_url      text,
+  description    text,
+
+  dedupe_key     text,
+  first_seen     timestamptz not null default now(),
+  last_seen      timestamptz not null default now(),
+  is_active      boolean     not null default true,
+  raw            jsonb
+);
+
+create index if not exists listings_active_idx on listings (is_active, last_seen desc);
+create index if not exists listings_model_idx  on listings (make, model, year);
+create index if not exists listings_dedupe_idx on listings (dedupe_key);
+
+-- One row per observed price change, so drops are visible over time.
+create table if not exists price_history (
+  listing_id text        not null references listings (id) on delete cascade,
+  price_eur  numeric(10, 2) not null,
+  seen_at    timestamptz not null default now(),
+  primary key (listing_id, seen_at)
+);
+
+create table if not exists evaluations (
+  listing_id        text primary key references listings (id) on delete cascade,
+  -- Hash of the scored content. If the listing text and price are unchanged,
+  -- the cached evaluation is reused instead of paying for the model again.
+  content_hash      text        not null,
+  score             int,
+  market_median_eur numeric(10, 2),
+  price_delta_pct   numeric(6, 2),
+  landed_cost_eur   numeric(10, 2),
+  ai_score          int,
+  verdict           text,
+  risks             jsonb,
+  inspect           jsonb,
+  evaluated_at      timestamptz not null default now()
+);
+
+create index if not exists evaluations_score_idx on evaluations (score desc);
