@@ -1,0 +1,34 @@
+/** What every site adapter must return. One record per ad on a search page. */
+export type RawListing = {
+  /** Stable per-site ad id, e.g. the numeric id from the URL. */
+  sourceId: string;
+  url: string;
+  title: string;
+  /** Price in the currency the site displays. */
+  price: number;
+  currency: "EUR" | "PLN";
+  year?: number;
+  mileageKm?: number;
+  fuel?: string;
+  transmission?: string;
+  location?: string;
+  imageUrl?: string;
+  /** Short teaser text when the search page carries one. */
+  snippet?: string;
+};
+
+export type Source = {
+  /** Short slug used as the id prefix, e.g. "sslv". */
+  name: string;
+  country: string;
+  /**
+   * Fetch one round of search pages and return everything found.
+   * Adapters do their own pagination internally, bounded by `maxPages`.
+   */
+  scan(maxPages: number): Promise<RawListing[]>;
+  /**
+   * Fewer rows than this in a healthy run means the parser broke or the site
+   * changed. Triggers a health alert, not a hard failure.
+   */
+  expectedMinimum: number;
+};

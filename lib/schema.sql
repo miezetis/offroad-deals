@@ -57,3 +57,25 @@ create table if not exists evaluations (
 );
 
 create index if not exists evaluations_score_idx on evaluations (score desc);
+
+-- Which content the AI verdict was written against. When content_hash moves
+-- (price cut, edited ad) the verdict is stale and gets re-run.
+alter table evaluations add column if not exists ai_hash text;
+
+-- Single-user state: hidden and starred listings.
+create table if not exists user_flags (
+  listing_id text primary key references listings (id) on delete cascade,
+  flag       text not null,
+  created_at timestamptz not null default now()
+);
+
+-- One row per scan run: what each source returned, for drift detection.
+create table if not exists scan_runs (
+  id           bigint generated always as identity primary key,
+  started_at   timestamptz not null,
+  finished_at  timestamptz not null default now(),
+  depth        int         not null,
+  source_counts jsonb      not null,
+  new_listings int         not null default 0,
+  price_drops  int         not null default 0
+);

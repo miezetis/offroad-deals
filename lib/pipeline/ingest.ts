@@ -1,0 +1,97 @@
+import { db } from "../db";
+import { plnToEur } from "../scrape/fx";
+import type { RawListing, Source } from "../scrape/types";
+import { matchVehicle, normalise } from "../vehicles";
+
+/**
+ * Keep the corpus wider than the buying band on purpose: the 12k Pajeros are
+ * what prove the 7k one is cheap. The UI narrows to the user's band.
+ */
+const MIN_PRICE_EUR = 500;
+const MAX_PRICE_EUR = 35000;
+
+/** Same car cross-posted on two sites lands on the same key. */
+function dedupeKey(make: string, model: string, year?: number, km?: number, price?: number) {
+  return [
+    normalise(make),
+    normalise(model),
+    year ?? "?",
+    km ? Math.round(km / 10000) : "?",
+    price ? Math.round(price / 500) : "?",
+  ].join("|");
+}
+
+export type IngestStats = { seen: number; kept: number; inserted: number; priceDrops: number };
+
+export async function ingest(source: Source, rows: RawListing[]): Promise<IngestStats> {
+  const sql = db();
+  const stats: IngestStats = { seen: rows.length, kept: 0, inserted: 0, priceDrops: 0 };
+
+  for (const row of rows) {
+    const vehicle = matchVehicle(row.title, row.year);
+    if (!vehicle) continue;
+
+    const priceEur = row.currency === "PLN" ? await plnToEur(row.price) : row.price;
+    if (priceEur < MIN_PRICE_EUR || priceEur > MAX_PRICE_EUR) continue;
+
+    stats.kept++;
+    const id = `${source.name}:${row.sourceId}`;
+
+    const existing = (await sql.query(
+      "select price_eur from listings where id = $1",
+      [id],
+    )) as { price_eur: string }[];
+
+    if (existing.length === 0) {
+      await sql.query(
+        `insert into listings
+           (id, source, country, url, title, make, model, generation, year,
+            mileage_km, fuel, transmission, price_eur, price_original, currency,
+            location, image_url, description, dedupe_key, raw)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+        [
+          id, source.name, source.country, row.url, row.title.slice(0, 300),
+          vehicle.make, vehicle.model, vehicle.generation ?? null, row.year ?? null,
+          row.mileageKm ?? null, row.fuel ?? null, row.transmission ?? null,
+          priceEur, row.price, row.currency,
+          row.location ?? null, row.imageUrl ?? null, row.snippet ?? null,
+          dedupeKey(vehicle.make, vehicle.model, row.year, row.mileageKm, priceEur),
+          JSON.stringify({ desirability: vehicle.desirability, note: vehicle.note ?? null }),
+        ],
+      );
+      await sql.query(
+        "insert into price_history (listing_id, price_eur) values ($1, $2)",
+        [id, priceEur],
+      );
+      stats.inserted++;
+    } else {
+      const oldPrice = Number(existing[0].price_eur);
+      await sql.query(
+        "update listings set last_seen = now(), is_active = true, price_eur = $2, url = $3 where id = $1",
+        [id, priceEur, row.url],
+      );
+      if (Math.abs(oldPrice - priceEur) >= 1) {
+        await sql.query(
+          "insert into price_history (listing_id, price_eur) values ($1, $2)",
+          [id, priceEur],
+        );
+        if (priceEur < oldPrice) stats.priceDrops++;
+      }
+    }
+  }
+
+  return stats;
+}
+
+/**
+ * Hourly scans only read the first page per category, so an ad quietly slides
+ * out of view long before it is sold. Only the daily deep sweep sees the full
+ * category, hence the generous two-missed-sweeps window.
+ */
+export async function deactivateStale() {
+  const sql = db();
+  const gone = (await sql.query(
+    "update listings set is_active = false where is_active and last_seen < now() - interval '50 hours' returning id",
+  )) as { id: string }[];
+  return gone.length;
+}

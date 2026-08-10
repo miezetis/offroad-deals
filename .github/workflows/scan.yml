@@ -1,0 +1,95 @@
+name: scan
+
+on:
+  schedule:
+    # Hourly shallow scan (first page per category).
+    - cron: "10 * * * *"
+    # Nightly deep sweep at 02:40 UTC keeps last_seen honest for whole
+    # categories, which is what sold-car detection depends on.
+    - cron: "40 2 * * *"
+  workflow_dispatch:
+    inputs:
+      depth:
+        description: "Pages per category"
+        default: "1"
+
+# A slow run and the next hourly tick must never write concurrently.
+concurrency:
+  group: scan
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Migrate schema
+        run: npx tsx scripts/migrate.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Scan
+        id: scan
+        run: npx tsx scripts/scan.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BRIGHTDATA_API_KEY: ${{ secrets.BRIGHTDATA_API_KEY }}
+          SCAN_DEPTH: ${{ github.event_name == 'schedule' && github.event.schedule == '40 2 * * *' && '6' || github.event.inputs.depth || '1' }}
+
+      - name: Notify new top deals
+        if: steps.scan.outputs.new_deals != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEALS: ${{ steps.scan.outputs.new_deals }}
+        run: |
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "New top deals $(date -u '+%Y-%m-%d %H:%M')" \
+            --label deals \
+            --body "$DEALS
+
+          https://offroad.miezetis.com"
+
+      - name: Report source health problems
+        if: steps.scan.outputs.health_warnings != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WARNINGS: ${{ steps.scan.outputs.health_warnings }}
+        run: |
+          # One open health issue at a time; append to it rather than spamming.
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label health --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body "$WARNINGS"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "Scraper health warnings" --label health --body "$WARNINGS"
+          fi
+
+      # GitHub disables cron on repos with no commits for 60 days. The weekly
+      # heartbeat commit keeps this workflow alive indefinitely.
+      - name: Heartbeat
+        if: github.event.schedule == '40 2 * * *'
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          if [ $(( now - last )) -gt 604800 ]; then
+            git config user.name "scan-bot"
+            git config user.email "actions@github.com"
+            date -u > .heartbeat
+            git add .heartbeat
+            git commit -m "heartbeat [skip ci]"
+            git push
+          fi
