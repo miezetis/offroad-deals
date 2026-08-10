@@ -27,7 +27,7 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
   const sql = db();
   const stats: IngestStats = { seen: rows.length, kept: 0, inserted: 0, priceDrops: 0 };
 
-  for (const row of rows) {
+  for (let row of rows) {
     const vehicle = matchVehicle(row.title, row.year);
     if (!vehicle) continue;
 

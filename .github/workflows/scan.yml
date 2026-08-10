@@ -36,6 +36,11 @@ jobs:
 
       - run: npm ci
 
+      # next build only typechecks what the app imports; this covers the
+      # pipeline and scripts too, so a bad commit fails here instead of
+      # producing runtime health warnings.
+      - run: npx tsc --noEmit
+
       - name: Migrate schema
         run: npx tsx scripts/migrate.ts
         env:
