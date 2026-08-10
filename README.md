@@ -23,13 +23,28 @@ Driving every filter and score in the app:
 ## Architecture
 
 - **Site**: Next.js 16 App Router on Vercel, reads Postgres directly.
-- **Scraper**: TypeScript, runs hourly on GitHub Actions. Vercel's Hobby plan
-  restricts cron frequency, so scheduling lives in Actions instead.
-- **Database**: Neon Postgres.
-- **Scoring**: rolling market medians built from the tool's own scraped corpus,
-  then a Claude pass over the top candidates only.
-- **Auth**: password gate in `proxy.ts`, session cookie derived from
-  `SITE_PASSWORD`.
+  Password gate in `proxy.ts`, star/hide via server actions.
+- **Scraper**: TypeScript, hourly on GitHub Actions (`scan.yml`). Hourly runs
+  read one page per model category; a nightly deep sweep (02:40 UTC, 6 pages)
+  keeps `last_seen` honest so vanished ads get marked inactive after 50h.
+- **Database**: Neon Postgres. `listings`, `price_history`, `evaluations`,
+  `scan_runs`, `user_flags`.
+- **Scoring** (`lib/pipeline/score.ts`): the corpus is scraped wide
+  (500-35000 EUR) so the 12k cars prove the 7k car is cheap. Median per model
+  within +-3 years (min 5 comps), price delta, desirability, diesel and manual
+  bonuses, mileage bands, landed-cost window, red-flag phrases.
+- **AI pass** (`lib/pipeline/evaluate.ts`): Claude Haiku reads only the top
+  candidates (score >= 55, max 12 per run), grounded with 5 real comps from
+  the corpus, cached by content hash so a listing is paid for once until it
+  changes.
+- **Autonomy**: new deals scoring >= 70 arrive as GitHub issues labelled
+  `deals`; parser drift or blocks file under `health`; a weekly heartbeat
+  commit defeats GitHub's 60-day scheduled-workflow disable; a `concurrency`
+  group stops overlapping runs.
+- **Blocked sites**: the `inspect` workflow fetches any URL through Bright
+  Data in CI and uploads the HTML as an artifact, so parsers for autoplius,
+  autogidas, auto24 and mobile.de get written against real markup without the
+  key leaving CI.
 
 ## Source sites
 

@@ -1,0 +1,29 @@
+name: inspect
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "URL to fetch through Bright Data"
+        required: true
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/inspect-page.ts "${{ github.event.inputs.url }}"
+        env:
+          BRIGHTDATA_API_KEY: ${{ secrets.BRIGHTDATA_API_KEY }}
+          BRIGHTDATA_ZONE: ${{ vars.BRIGHTDATA_ZONE || 'web_unlocker1' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inspected-page
+          path: inspected.html
+          retention-days: 3
