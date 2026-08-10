@@ -38,8 +38,9 @@ jobs:
 
       # next build only typechecks what the app imports; this covers the
       # pipeline and scripts too, so a bad commit fails here instead of
-      # producing runtime health warnings.
-      - run: npx tsc --noEmit
+      # producing runtime health warnings. typegen first: PageProps and
+      # friends are generated globals that fresh runners lack.
+      - run: npx next typegen && npx tsc --noEmit
 
       - name: Migrate schema
         run: npx tsx scripts/migrate.ts
