@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { FilterField, FilterForm } from "./filter-form";
 import { ListingCard, type CardData } from "./listing-card";
+import type { Factor } from "./score-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ type Row = {
   image_url: string | null;
   first_seen: string;
   score: number | null;
+  breakdown: Factor[] | null;
   ai_score: number | null;
   verdict: string | null;
   risks: string[] | null;
@@ -91,6 +93,7 @@ function toCard(r: Row, dayAgo: number): CardData {
         : null,
     medianNegative: Number(r.price_delta_pct ?? 0) < 0,
     score: r.score,
+    breakdown: r.breakdown ?? [],
     isNew: new Date(r.first_seen).getTime() > dayAgo,
     priceDrop: dropped ? `${eur(r.first_price)} → ${eur(r.price_eur)}` : null,
     imageUrl: r.image_url,
@@ -149,7 +152,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     `select l.id, l.source, l.country, l.url, l.title, l.make, l.model, l.generation,
             l.year, l.mileage_km, l.fuel, l.transmission, l.power_kw, l.price_eur,
             l.location, l.image_url, l.first_seen,
-            e.score, e.ai_score, e.verdict, e.risks, e.inspect,
+            e.score, e.breakdown, e.ai_score, e.verdict, e.risks, e.inspect,
             e.market_median_eur, e.price_delta_pct, e.landed_cost_eur,
             f.flag, f.opened_at,
             (select ph.price_eur from price_history ph

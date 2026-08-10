@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { clearFlag, hideListing, markOpened, starListing } from "./actions";
+import { ScoreBadge, type Factor } from "./score-badge";
 
 /** Everything precomputed server-side; this component only renders it. */
 export type CardData = {
@@ -14,6 +15,7 @@ export type CardData = {
   median: string | null;
   medianNegative: boolean;
   score: number | null;
+  breakdown: Factor[];
   isNew: boolean;
   priceDrop: string | null;
   imageUrl: string | null;
@@ -24,12 +26,6 @@ export type CardData = {
   flag: string | null;
   openedAt: string | null;
 };
-
-function scoreColor(score: number) {
-  if (score >= 75) return "bg-emerald-600";
-  if (score >= 55) return "bg-amber-600";
-  return "bg-neutral-700";
-}
 
 const badge = "rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide";
 const iconBtn =
@@ -85,7 +81,7 @@ export function ListingCard({ card }: { card: CardData }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           {card.score != null ? (
-            <span className={`${badge} text-white ${scoreColor(card.score)}`}>{card.score}</span>
+            <ScoreBadge score={card.score} breakdown={card.breakdown} />
           ) : null}
           {card.isNew && !opened ? (
             <span className={`${badge} bg-sky-600 text-white`}>new</span>

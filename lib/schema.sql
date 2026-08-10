@@ -65,6 +65,10 @@ alter table evaluations add column if not exists ai_hash text;
 -- Engine power, always stored in kW regardless of the unit the site used.
 alter table listings add column if not exists power_kw int;
 
+-- Per-factor scoring explanation: [{label, points, detail}, ...]. Stored so
+-- the UI can justify any score it shows instead of asking for trust.
+alter table evaluations add column if not exists breakdown jsonb;
+
 -- Single-user state: hidden, starred, and whether the ad has been opened.
 -- flag and opened_at are orthogonal, so flag is nullable: a row can exist
 -- purely to record that a listing was viewed.
