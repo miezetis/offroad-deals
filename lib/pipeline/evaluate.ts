@@ -40,6 +40,10 @@ export async function evaluateTop(): Promise<number> {
   }
 
   const sql = db();
+  // Listings that already carry a verdict go first: when the prompt changes,
+  // invalidating ai_hash makes every prior verdict eligible again, and
+  // without this those stale-but-still-displayed verdicts would be buried
+  // under whichever new candidates happen to score higher.
   const candidates = (await sql.query(
     `select l.id, l.title, l.country, l.make, l.model, l.generation, l.year,
             l.mileage_km, l.fuel, l.transmission, l.price_eur, l.description,
@@ -50,7 +54,7 @@ export async function evaluateTop(): Promise<number> {
      where l.is_active
        and e.score >= $1
        and (e.ai_hash is null or e.ai_hash is distinct from e.content_hash)
-     order by e.score desc
+     order by (e.verdict is not null) desc, e.score desc
      limit $2`,
     [MIN_SCORE_FOR_AI, MAX_EVALUATIONS_PER_RUN],
   )) as Candidate[];
