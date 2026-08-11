@@ -2,10 +2,10 @@ name: scan
 
 on:
   schedule:
-    # Shallow scan every 2 hours (first page per category). Cars sit listed
-    # for days, so twice-hourly bought almost nothing and doubled both
-    # Actions minutes and paid Bright Data requests.
-    - cron: "10 */2 * * *"
+    # Shallow scan every 30 minutes (first page per category). Owner's call
+    # 2026-08-11: catch new listings faster, at the cost of ~4x the Actions
+    # minutes and paid Bright Data requests versus the old 2-hourly cadence.
+    - cron: "*/30 * * * *"
     # Nightly deep sweep at 02:40 UTC keeps last_seen honest for whole
     # categories, which is what sold-car detection depends on.
     - cron: "40 2 * * *"

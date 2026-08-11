@@ -210,17 +210,15 @@ export async function scoreAll(): Promise<{ scored: number; top: Scored[] }> {
       });
     }
 
-    // An ad missing basic facts is harder to trust and harder to compare.
-    const missing = [
-      !row.year && "year",
-      !row.mileage_km && "mileage",
-      !row.fuel && "fuel",
-    ].filter(Boolean) as string[];
-    if (missing.length) {
+    // Year and fuel are guaranteed present for every row that reaches this
+    // table (both are required to match one of the 3 target variants in the
+    // first place — see lib/target-variants.ts), so mileage is the only
+    // basic fact that can genuinely still be missing from the ad.
+    if (!row.mileage_km) {
       breakdown.push({
         label: "Missing data",
-        points: Math.max(-9, missing.length * -3),
-        detail: `Listing does not state ${missing.join(", ")}`,
+        points: -3,
+        detail: "Listing does not state mileage",
       });
     }
 

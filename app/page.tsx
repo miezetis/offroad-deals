@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { TARGET_VARIANTS } from "@/lib/target-variants";
 import { FilterChip, FilterField, FilterForm } from "./filter-form";
-import { ListingCard, type CardData } from "./listing-card";
+import { ListingCard, type CardData, type CategoryScore } from "./listing-card";
 import type { Factor } from "./score-badge";
 
 export const dynamic = "force-dynamic";
@@ -20,14 +20,18 @@ const SORT_LABELS: Record<string, string> = {
 };
 
 /**
- * Owner's call 2026-08-11: this page shows exactly the 3 Land Cruiser
- * variants in lib/target-variants.ts, nothing else. `l.generation` is set by
- * that same whitelist at ingest time (lib/pipeline/ingest.ts), so filtering
- * on it here is a belt-and-braces guarantee, not just a UI convenience —
- * even a stray row from before this whitelist existed cannot show up.
+ * Owner's call 2026-08-11: this page shows exactly the variants in
+ * lib/target-variants.ts, nothing else. `l.generation` is set by that same
+ * whitelist at ingest time (lib/pipeline/ingest.ts), so filtering on it here
+ * is a belt-and-braces guarantee, not just a UI convenience — even a stray
+ * row from before this whitelist existed cannot show up.
  */
 const TARGET_GENERATIONS = TARGET_VARIANTS.map((v) => v.generation);
 const VARIANT_LABEL = Object.fromEntries(TARGET_VARIANTS.map((v) => [v.generation, v.label]));
+const HEADER_MAKES = [...new Set(TARGET_VARIANTS.map((v) => `${v.make} ${v.model}`))].join(" + ");
+const HEADER_SHORT_LABELS = TARGET_VARIANTS
+  .map((v) => v.generation.match(/\(([^)]+)\)/)?.[1] ?? v.generation)
+  .join(" · ");
 
 /**
  * Asking price, since shipping and import costs depend entirely on where the
@@ -70,6 +74,8 @@ type Row = {
   breakdown: Factor[] | null;
   ai_score: number | null;
   verdict: string | null;
+  bucket: "GREEN" | "YELLOW" | "RED" | null;
+  category_breakdown: CategoryScore[] | null;
   risks: string[] | null;
   inspect: string[] | null;
   market_median_eur: string | null;
@@ -121,6 +127,8 @@ function toCard(r: Row): CardData {
     medianNegative: Number(r.price_delta_pct ?? 0) < 0,
     score: r.score,
     breakdown: r.breakdown ?? [],
+    bucket: r.bucket,
+    categoryBreakdown: r.category_breakdown ?? [],
     isNew: r.is_new,
     priceDrop: dropped ? `${eur(r.first_price)} → ${eur(r.price_eur)}` : null,
     imageUrl: r.image_url,
@@ -183,7 +191,8 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             l.year, l.mileage_km, l.fuel, l.transmission, l.power_kw, l.price_eur,
             l.location, l.image_url,
             (l.first_seen > now() - interval '24 hours') as is_new,
-            e.score, e.breakdown, e.ai_score, e.verdict, e.risks, e.inspect,
+            e.score, e.breakdown, e.ai_score, e.verdict, e.bucket, e.category_breakdown,
+            e.risks, e.inspect,
             e.market_median_eur, e.price_delta_pct,
             f.flag, f.opened_at,
             (select ph.price_eur from price_history ph
@@ -233,7 +242,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               Offroad<span className="text-emerald-500">Deals</span>
             </h1>
             <p className="truncate text-xs text-neutral-500">
-              Toyota Land Cruiser only — Prado 120 · 100 Series V8 · 80 Series
+              {HEADER_MAKES} only — {HEADER_SHORT_LABELS}
               {lastScan[0] ? ` · scanned ${ago(lastScan[0].finished_at)}` : ""}
             </p>
           </div>
@@ -268,7 +277,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               <input type="hidden" name="view" value={view} />
               <FilterField label="Variant">
                 <select name="generation" defaultValue={generation} className={field}>
-                  <option value="">All 3 variants</option>
+                  <option value="">{`All ${TARGET_VARIANTS.length} variants`}</option>
                   {TARGET_VARIANTS.map((v) => (
                     <option key={v.generation} value={v.generation}>{v.label}</option>
                   ))}
@@ -343,7 +352,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
 
               <FilterField label="Variant">
                 <select name="generation" defaultValue={generation} className={field}>
-                  <option value="">All 3 variants</option>
+                  <option value="">{`All ${TARGET_VARIANTS.length} variants`}</option>
                   {TARGET_VARIANTS.map((v) => (
                     <option key={v.generation} value={v.generation}>{v.label}</option>
                   ))}

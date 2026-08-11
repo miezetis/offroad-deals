@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import { brightdataAvailable, fetchViaBrightdata } from "../brightdata";
 import { parseMileage, parsePrice, parseYear } from "../parse";
 import type { RawListing, Source } from "../types";
-import { TARGET_VARIANTS } from "../../target-variants";
+import { matchTargetVariant } from "../../target-variants";
 
 /**
  * theparking.eu, a pan-European meta-search aggregator (pulls from
@@ -32,19 +32,14 @@ import { TARGET_VARIANTS } from "../../target-variants";
  * of the 27 Land Cruiser cards on the page.
  */
 
-const SEARCH_URL = "https://www.theparking.eu/used-cars/Toyota-Land-Cruiser.html";
-
-// Year window is what disambiguates the 3 target variants: theparking's own
-// ENGINE facet confirmed 3.0, 4.5 and 4.7 all recur across multiple Land
-// Cruiser generations, so displacement + fuel alone is not enough. Variant
-// data itself lives in lib/target-variants.ts, shared with ingest.ts so
-// every other source applies the exact same whitelist.
-function matchesTarget(displacement: string | undefined, fuel: string | undefined, year: number | undefined) {
-  if (!displacement || !fuel || !year) return false;
-  return TARGET_VARIANTS.some(
-    (v) => v.displacement === displacement && v.fuel === fuel && year >= v.yearFrom && year <= v.yearTo,
-  );
-}
+const SEARCH_URLS = [
+  "https://www.theparking.eu/used-cars/Toyota-Land-Cruiser.html",
+  // Unverified guess at the same URL pattern for the Lexus GX470 (added
+  // 2026-08-11). Should be validated via the `inspect` workflow before
+  // fully trusting it; a wrong slug just yields 0 rows from this fetch,
+  // not a crash.
+  "https://www.theparking.eu/used-cars/Lexus-GX470.html",
+];
 
 const FUEL_MAP: Record<string, "diesel" | "petrol" | "hybrid" | "lpg" | "electric"> = {
   diesel: "diesel",
@@ -88,7 +83,13 @@ export function parseList(html: string): RawListing[] {
       .get()
       .filter(Boolean);
     const trim = trimTokens.join(" ") || $li.find(".sub-title.title-block").eq(1).text().trim();
-    const title = [brand, model, trim].filter(Boolean).join(" ").trim();
+    // Some listings (Lexus GX470 among them) repeat the model name as the
+    // first trim token ("Gx 470" model + "Gx 470 V8 4.7" trim), which reads
+    // as "Lexus Gx 470 Gx 470" once joined. Drop the duplicate.
+    const dedupedTrim = trim.toLowerCase().startsWith(model.toLowerCase())
+      ? trim.slice(model.length).trim()
+      : trim;
+    const title = [brand, model, dedupedTrim].filter(Boolean).join(" ").trim();
     if (!title) return;
 
     const price = parsePrice($li.find(".prix").first().text());
@@ -108,9 +109,8 @@ export function parseList(html: string): RawListing[] {
 
     const fuel = fuelRaw ? FUEL_MAP[fuelRaw.toLowerCase()] : undefined;
     const year = yearRaw ? parseYear(yearRaw) : undefined;
-    const displacement = trim.match(/\b(\d\.\d)\b/)?.[1];
 
-    if (!matchesTarget(displacement, fuel, year)) return;
+    if (!matchTargetVariant(title, year, fuel)) return;
 
     const countryRaw = $li.find(".location .upper").first().text().trim().toUpperCase();
     const country = COUNTRY_MAP[countryRaw];
@@ -154,9 +154,16 @@ export const theparking: Source = {
   // See file header: a healthy run can legitimately return zero rows.
   expectedMinimum: 0,
   async scan() {
-    const html = await fetchViaBrightdata(SEARCH_URL);
-    const rows = parseList(html);
-    console.log(`theparking: ${rows.length} rows matched one of the ${TARGET_VARIANTS.length} target variants`);
-    return rows;
+    const out: RawListing[] = [];
+    for (const url of SEARCH_URLS) {
+      try {
+        const html = await fetchViaBrightdata(url);
+        out.push(...parseList(html));
+      } catch (err) {
+        console.log(`theparking: ${url} failed: ${(err as Error).message.slice(0, 120)}`);
+      }
+    }
+    console.log(`theparking: ${out.length} rows matched one of the target variants`);
+    return out;
   },
 };

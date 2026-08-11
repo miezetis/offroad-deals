@@ -10,6 +10,9 @@ import type { RawListing, Source } from "../types";
  */
 const CATEGORIES: [path: string, label: string][] = [
   ["toyota/land-cruiser", "Toyota Land Cruiser"],
+  // Unverified guess at ss.com's slug for this category; the per-category
+  // try/catch below means a wrong path just yields 0 rows here, not a crash.
+  ["lexus/gx", "Lexus GX470"],
   ["toyota/hilux", "Toyota Hilux"],
   ["toyota/rav4", "Toyota RAV4"],
   ["mitsubishi/pajero", "Mitsubishi Pajero"],

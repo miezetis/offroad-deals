@@ -11,6 +11,7 @@ import type { RawListing, Source } from "../types";
  */
 const KEYWORDS = [
   "land cruiser",
+  "lexus gx470",
   "hilux",
   "tacoma",
   "rav4",

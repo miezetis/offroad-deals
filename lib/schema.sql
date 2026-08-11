@@ -81,6 +81,14 @@ create table if not exists user_flags (
 alter table user_flags alter column flag drop not null;
 alter table user_flags add column if not exists opened_at timestamptz;
 
+-- Owner's scoring blueprint, 2026-08-11: the AI pass now also outputs a
+-- headline bucket (GREEN/YELLOW/RED) and a per-category point breakdown
+-- (drivetrain, engine, suspension, upgrades, price-to-value — mirrors the
+-- shape of the deterministic `breakdown` column above) alongside the
+-- existing ai_score/verdict/risks/inspect.
+alter table evaluations add column if not exists bucket text;
+alter table evaluations add column if not exists category_breakdown jsonb;
+
 -- One row per scan run: what each source returned, for drift detection.
 create table if not exists scan_runs (
   id           bigint generated always as identity primary key,

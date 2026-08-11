@@ -9,6 +9,7 @@ import type { RawListing, Source } from "../types";
  */
 const MODEL_PATHS = [
   "toyota-land-cruiser",
+  "lexus-gx",
   "toyota-hilux",
   "toyota-tacoma",
   "toyota-rav4",

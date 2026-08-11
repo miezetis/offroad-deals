@@ -62,7 +62,7 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
         [
           id, source.name, row.country ?? source.country, row.url, row.title.slice(0, 300),
           vehicle.make, vehicle.model, vehicle.generation ?? null, row.year ?? null,
-          row.mileageKm ?? null, row.fuel ?? null, row.transmission ?? null,
+          row.mileageKm ?? null, vehicle.fuel, row.transmission ?? null,
           row.powerKw ?? null,
           priceEur, row.price, row.currency,
           row.location ?? null, row.imageUrl || null, row.snippet ?? null,
@@ -78,13 +78,16 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
     } else {
       const oldPrice = Number(existing[0].price_eur);
       // coalesce so a source that improves its parsing backfills existing
-      // rows, while a source that cannot see a field never wipes it.
+      // rows, while a source that cannot see a field never wipes it. fuel is
+      // the one exception: it is deterministic once matched (see
+      // target-variants.ts), so it is always set outright rather than
+      // trusting whatever a given source's own parser happened to see.
       await sql.query(
         `update listings set
            last_seen = now(), is_active = true, price_eur = $2, url = $3,
            year = coalesce($4, year),
            mileage_km = coalesce($5, mileage_km),
-           fuel = coalesce($6, fuel),
+           fuel = $6,
            transmission = coalesce($7, transmission),
            power_kw = coalesce($8, power_kw),
            image_url = coalesce($9, image_url),
@@ -92,7 +95,7 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
          where id = $1`,
         [
           id, priceEur, row.url,
-          row.year ?? null, row.mileageKm ?? null, row.fuel ?? null,
+          row.year ?? null, row.mileageKm ?? null, vehicle.fuel,
           row.transmission ?? null, row.powerKw ?? null, row.imageUrl || null,
           vehicle.generation ?? null,
         ],

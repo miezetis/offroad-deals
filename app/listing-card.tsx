@@ -4,6 +4,8 @@ import { useState, type ReactNode } from "react";
 import { clearFlag, hideListing, markOpened, starListing } from "./actions";
 import { ScoreBadge, type Factor } from "./score-badge";
 
+export type CategoryScore = { label: string; points: number; max: number; detail: string };
+
 /** Everything precomputed server-side; this component only renders it. */
 export type CardData = {
   id: string;
@@ -25,10 +27,18 @@ export type CardData = {
   imageUrl: string | null;
   verdict: string | null;
   aiScore: number | null;
+  bucket: "GREEN" | "YELLOW" | "RED" | null;
+  categoryBreakdown: CategoryScore[];
   risks: string[];
   inspect: string[];
   flag: string | null;
   openedAt: string | null;
+};
+
+const BUCKET_STYLE: Record<string, string> = {
+  GREEN: "bg-emerald-600",
+  YELLOW: "bg-amber-600",
+  RED: "bg-red-600",
 };
 
 const badge = "rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide";
@@ -135,6 +145,11 @@ export function ListingCard({ card }: { card: CardData }) {
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {card.score != null ? <ScoreBadge score={card.score} breakdown={card.breakdown} /> : null}
+            {card.bucket ? (
+              <span className={`${badge} text-white ${BUCKET_STYLE[card.bucket]}`} title="Blueprint scoring bucket">
+                {card.bucket}
+              </span>
+            ) : null}
             {card.isNew && !opened ? <span className={`${badge} bg-sky-600 text-white`}>new</span> : null}
             {card.priceDrop ? (
               <span className={`${badge} bg-purple-600 text-white`}>↓ {card.priceDrop}</span>
@@ -191,6 +206,21 @@ export function ListingCard({ card }: { card: CardData }) {
               {card.risks.length ? <p className="text-red-400">Risks: {card.risks.join(" · ")}</p> : null}
               {card.inspect.length ? (
                 <p className="text-amber-400">Inspect: {card.inspect.join(" · ")}</p>
+              ) : null}
+              {card.categoryBreakdown.length ? (
+                <ul className="space-y-1 border-t border-neutral-800 pt-2">
+                  {card.categoryBreakdown.map((f, i) => (
+                    <li key={i} className="flex gap-2 text-xs">
+                      <span className="w-12 shrink-0 text-right font-mono font-semibold text-neutral-400">
+                        {f.points}/{f.max}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="font-medium text-neutral-200">{f.label}</span>
+                        <span className="block leading-snug text-neutral-500">{f.detail}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
             </div>
           </details>
