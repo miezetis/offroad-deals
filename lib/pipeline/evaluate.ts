@@ -11,6 +11,41 @@ import { db } from "../db";
 const MAX_EVALUATIONS_PER_RUN = 12;
 const MIN_SCORE_FOR_AI = 55;
 
+/**
+ * Known-issue notes for specific engine/generation combinations, so the AI
+ * pass can flag model-specific things instead of generic advice. Matched by
+ * generation + fuel + a year window narrower than the generation itself,
+ * since e.g. the 100 Series spans both a 4.2 diesel and a 4.7 V8 petrol, and
+ * only the latter gets this note.
+ */
+const ENGINE_NOTES: { generation: string; fuel: string; yearFrom: number; yearTo: number; note: string }[] = [
+  {
+    generation: "J12 (Prado 120)", fuel: "diesel", yearFrom: 2006, yearTo: 2009,
+    note: "1KD-FTV 3.0L D-4D turbo-diesel (173 HP / 410 Nm). Known weak points: injector failures " +
+      "(cheap fuel is a common cause), timing chain guides and tensioner wear past 200k km, EGR/DPF " +
+      "clogging on cars used mostly for short trips.",
+  },
+  {
+    generation: "J10 (100-series)", fuel: "petrol", yearFrom: 1998, yearTo: 2007,
+    note: "2UZ-FE 4.7L V8 petrol (~232 HP / 434 Nm). Reliable engine, but check for: high fuel " +
+      "consumption as a running cost, front differential/IFS wear on early cars, and confirm timing " +
+      "belt/water pump service history, not chain-driven on this engine.",
+  },
+  {
+    generation: "J8 (80-series)", fuel: "petrol", yearFrom: 1992, yearTo: 1997,
+    note: "1FZ-FE 4.5L straight-6 petrol (~212 HP / 373 Nm). Watch for: head gasket failures " +
+      "(known weak point on this engine), fuel consumption, and rust on the chassis/rear crossmember " +
+      "given the age of the vehicle.",
+  },
+];
+
+function engineNote(generation: string | null, fuel: string | null, year: number | null): string | undefined {
+  if (!generation || !fuel || !year) return undefined;
+  return ENGINE_NOTES.find(
+    (n) => n.generation === generation && n.fuel === fuel && year >= n.yearFrom && year <= n.yearTo,
+  )?.note;
+}
+
 type Candidate = {
   id: string;
   title: string;
@@ -94,7 +129,7 @@ Price: ${c.price_eur} EUR, located in ${c.country}
 Market median for comparable cars in our scraped corpus: ${c.market_median_eur ?? "insufficient data"} EUR
 Title: ${c.title}
 Seller text: ${(c.description ?? "").slice(0, 600) || "(none)"}
-
+${engineNote(c.generation, c.fuel, c.year) ? `\nKnown engine/generation notes: ${engineNote(c.generation, c.fuel, c.year)}\n` : ""}
 REAL COMPARABLE LISTINGS FROM THE SAME CORPUS
 ${comps.map((k) => `- ${k.year ?? "?"} | ${k.mileage_km ?? "?"} km | ${k.price_eur} EUR | ${k.country}`).join("\n") || "(none)"}
 

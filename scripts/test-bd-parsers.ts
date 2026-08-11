@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { parseList as autoplius } from "../lib/scrape/sources/autoplius";
 import { parseList as auto24 } from "../lib/scrape/sources/auto24";
 import { parseList as autogidas } from "../lib/scrape/sources/autogidas";
+import { parseList as theparking } from "../lib/scrape/sources/theparking";
 import { matchVehicle } from "../lib/vehicles";
 
 const S = process.argv[2];
@@ -10,6 +11,9 @@ const cases = [
   ["autoplius", autoplius],
   ["auto24", auto24],
   ["autogidas", autogidas],
+  // theparking already filters to the 3 target variants internally, so
+  // rows=matched=toyota/subaru here is expected, not a bug.
+  ["theparking", theparking],
 ] as const;
 
 for (const [name, parse] of cases) {

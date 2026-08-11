@@ -12,6 +12,7 @@ import { SOURCES } from "../lib/scrape/sources";
 import { ingest, deactivateStale, type IngestStats } from "../lib/pipeline/ingest";
 import { scoreAll } from "../lib/pipeline/score";
 import { evaluateTop } from "../lib/pipeline/evaluate";
+import { sendDealAlert } from "../lib/notify/email";
 
 function setOutput(name: string, value: string) {
   if (process.env.GITHUB_OUTPUT) {
@@ -90,6 +91,7 @@ async function main() {
         )
         .join("\n"),
     );
+    await sendDealAlert(newDeals);
   }
   if (warnings.length) setOutput("health_warnings", warnings.join("\n"));
 
