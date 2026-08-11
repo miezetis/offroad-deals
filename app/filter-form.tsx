@@ -7,6 +7,9 @@ import type { FocusEvent, FormEvent, ReactNode } from "react";
  * shareable. Selects submit on change (discrete choice, no reason to wait).
  * Number inputs submit on blur instead, so typing "1990" doesn't fire four
  * requests for "1", "19", "199", "1990".
+ *
+ * Rendered as a vertical sidebar (AutoScout24-style filter rail) rather than
+ * a wrapping top bar.
  */
 export function FilterForm({ children }: { children: ReactNode }) {
   const onChange = (e: FormEvent<HTMLFormElement>) => {
@@ -21,12 +24,7 @@ export function FilterForm({ children }: { children: ReactNode }) {
   };
 
   return (
-    <form
-      method="get"
-      onChange={onChange}
-      onBlur={onBlur}
-      className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-end sm:gap-2"
-    >
+    <form method="get" onChange={onChange} onBlur={onBlur} className="flex flex-col gap-4">
       {children}
     </form>
   );
@@ -35,11 +33,24 @@ export function FilterForm({ children }: { children: ReactNode }) {
 /** Labelled wrapper so every control is self-explanatory at a glance. */
 export function FilterField({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="flex min-w-0 flex-col gap-1 sm:w-36">
+    <label className="flex flex-col gap-1.5 border-b border-neutral-800/70 pb-3.5 last:border-0 last:pb-0">
       <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
         {label}
       </span>
       {children}
     </label>
+  );
+}
+
+/** A single removable "Model: X ✕" pill shown above the results list. */
+export function FilterChip({ label, href }: { label: string; href: string }) {
+  return (
+    <a
+      href={href}
+      className="inline-flex items-center gap-1.5 rounded-full border border-neutral-700 bg-neutral-900 px-3 py-1 text-xs font-medium text-neutral-200 transition-colors hover:border-neutral-500"
+    >
+      {label}
+      <span aria-hidden className="text-neutral-500">✕</span>
+    </a>
   );
 }

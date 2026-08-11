@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { FilterField, FilterForm } from "./filter-form";
+import { TARGET_VARIANTS } from "@/lib/target-variants";
+import { FilterChip, FilterField, FilterForm } from "./filter-form";
 import { ListingCard, type CardData } from "./listing-card";
 import type { Factor } from "./score-badge";
 
@@ -13,8 +14,20 @@ const SORTS: Record<string, string> = {
   power: "l.power_kw desc nulls last",
   year: "l.year desc nulls last",
 };
+const SORT_LABELS: Record<string, string> = {
+  score: "Best score", price: "Cheapest", newest: "Newest listed",
+  mileage: "Lowest km", power: "Most power", year: "Newest year",
+};
 
-const COUNTRIES = ["EE", "LV", "LT", "FI", "PL", "SK", "DE", "NL", "IT"];
+/**
+ * Owner's call 2026-08-11: this page shows exactly the 3 Land Cruiser
+ * variants in lib/target-variants.ts, nothing else. `l.generation` is set by
+ * that same whitelist at ingest time (lib/pipeline/ingest.ts), so filtering
+ * on it here is a belt-and-braces guarantee, not just a UI convenience —
+ * even a stray row from before this whitelist existed cannot show up.
+ */
+const TARGET_GENERATIONS = TARGET_VARIANTS.map((v) => v.generation);
+const VARIANT_LABEL = Object.fromEntries(TARGET_VARIANTS.map((v) => [v.generation, v.label]));
 
 /**
  * Asking price, since shipping and import costs depend entirely on where the
@@ -29,8 +42,11 @@ const BANDS = {
 } satisfies Record<string, { label: string; min: number; max: number | null }>;
 
 type BandKey = keyof typeof BANDS;
-const FUELS = ["diesel", "petrol", "lpg", "hybrid", "electric"];
+const FUELS = ["diesel", "petrol"];
 const GEARBOXES = ["manual", "automatic"];
+const COUNTRIES = [
+  "BE", "DE", "FR", "GB", "NL", "IT", "ES", "AT", "CH", "PL", "EE", "LV", "LT", "FI", "SK",
+];
 
 type Row = {
   id: string;
@@ -81,23 +97,22 @@ function ago(date: string) {
 }
 
 function toCard(r: Row): CardData {
-  const chips: string[] = [];
-  chips.push(`${r.make} ${r.model}${r.generation ? ` ${r.generation}` : ""}`);
-  if (r.year) chips.push(String(r.year));
-  if (r.mileage_km) chips.push(`${Math.round(r.mileage_km / 1000)} tkm`);
-  if (r.power_kw) chips.push(`${r.power_kw} kW / ${Math.round(r.power_kw / 0.7355)} hp`);
-  if (r.fuel) chips.push(r.fuel);
-  if (r.transmission) chips.push(r.transmission);
-  chips.push(r.location ? `${r.country} · ${r.location.slice(0, 24)}` : r.country);
-  chips.push(r.source);
-
   const dropped = r.first_price != null && Number(r.price_eur) < Number(r.first_price) - 1;
+  const heading = `${r.make} ${r.model}${r.generation ? ` · ${VARIANT_LABEL[r.generation] ?? r.generation}` : ""}`;
+  const meta = [r.source, r.location ? `${r.country} · ${r.location.slice(0, 24)}` : r.country]
+    .filter(Boolean)
+    .join(" · ");
 
   return {
     id: r.id,
     url: r.url,
-    title: r.title,
-    chips,
+    heading,
+    subtitle: r.title,
+    year: r.year ? String(r.year) : null,
+    mileage: r.mileage_km ? `${Math.round(r.mileage_km / 1000)} tkm` : null,
+    fuel: r.fuel,
+    power: r.power_kw ? `${r.power_kw} kW / ${Math.round(r.power_kw / 0.7355)} hp` : null,
+    meta,
     price: eur(r.price_eur),
     median:
       r.market_median_eur && r.price_delta_pct
@@ -130,7 +145,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const country = pick("country", COUNTRIES);
   const fuel = pick("fuel", FUELS);
   const gearbox = pick("gearbox", GEARBOXES);
-  const model = typeof params.model === "string" ? params.model : "";
+  const generation = pick("generation", TARGET_GENERATIONS);
   const bandKey = (String(params.band) in BANDS ? String(params.band) : "medium") as BandKey;
   const band = BANDS[bandKey];
   const view =
@@ -140,8 +155,8 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const powerMin = num(params.powerMin);
 
   const sql = db();
-  const where: string[] = ["l.is_active"];
-  const args: unknown[] = [];
+  const where: string[] = ["l.is_active", "l.generation = any($1)"];
+  const args: unknown[] = [TARGET_GENERATIONS];
   const add = (clause: (i: number) => string, value: unknown) => {
     args.push(value);
     where.push(clause(args.length));
@@ -152,13 +167,11 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   if (view === "hidden") where.push("f.flag = 'hidden'");
   if (view === "main" && band.max !== null) {
     args.push(band.min, band.max);
-    where.push(
-      `l.price_eur between $${args.length - 1} and $${args.length}`,
-    );
+    where.push(`l.price_eur between $${args.length - 1} and $${args.length}`);
   }
 
   if (country) add((i) => `l.country = $${i}`, country);
-  if (model) add((i) => `(l.make || ' ' || l.model) ilike $${i}`, `%${model}%`);
+  if (generation) add((i) => `l.generation = $${i}`, generation);
   if (fuel) add((i) => `l.fuel = $${i}`, fuel);
   if (gearbox) add((i) => `l.transmission = $${i}`, gearbox);
   if (yearFrom) add((i) => `l.year >= $${i}`, yearFrom);
@@ -184,30 +197,47 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     args,
   )) as Row[];
 
-  const models = (await sql.query(
-    `select distinct make || ' ' || model as name from listings where is_active order by 1`,
-  )) as { name: string }[];
-
   const lastScan = (await sql.query(
     `select finished_at from scan_runs order by id desc limit 1`,
   )) as { finished_at: string }[];
 
   const cards = rows.map(toCard);
 
+  // Chips shown above the results, one per active narrowing filter, each
+  // removable by linking to the same query string with that param dropped.
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (typeof v === "string" && v) qs.set(k, v);
+  }
+  const chipHref = (key: string) => {
+    const next = new URLSearchParams(qs);
+    next.delete(key);
+    return `/?${next.toString()}`;
+  };
+  const chips: { key: string; label: string }[] = [];
+  if (generation) chips.push({ key: "generation", label: VARIANT_LABEL[generation] });
+  if (fuel) chips.push({ key: "fuel", label: fuel });
+  if (gearbox) chips.push({ key: "gearbox", label: gearbox });
+  if (country) chips.push({ key: "country", label: country });
+  if (bandKey !== "medium") chips.push({ key: "band", label: BANDS[bandKey].label });
+  if (yearFrom) chips.push({ key: "yearFrom", label: `from ${yearFrom}` });
+  if (yearTo) chips.push({ key: "yearTo", label: `to ${yearTo}` });
+  if (powerMin) chips.push({ key: "powerMin", label: `${powerMin}+ kW` });
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-950 to-black">
-      <header className="sticky top-0 z-10 border-b border-neutral-800/70 bg-neutral-950/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
+    <div className="min-h-screen bg-black">
+      <header className="sticky top-0 z-10 border-b border-neutral-800 bg-neutral-950">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <h1 className="text-lg font-semibold tracking-tight">
               Offroad<span className="text-emerald-500">Deals</span>
             </h1>
             <p className="truncate text-xs text-neutral-500">
-              {cards.length} shown · 9 countries
+              Toyota Land Cruiser only — Prado 120 · 100 Series V8 · 80 Series
               {lastScan[0] ? ` · scanned ${ago(lastScan[0].finished_at)}` : ""}
             </p>
           </div>
-          <nav className="flex rounded-lg border border-neutral-800 bg-neutral-900/80 p-0.5 text-sm">
+          <nav className="flex rounded-lg border border-neutral-800 bg-neutral-900 p-0.5 text-sm">
             {(["main", "starred", "hidden"] as const).map((v) => (
               <a
                 key={v}
@@ -225,111 +255,211 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-4">
-        <FilterForm>
-          <input type="hidden" name="view" value={view} />
-
-          <FilterField label="Sort">
-            <select name="sort" defaultValue={sort} className={field}>
-              <option value="score">Best score</option>
-              <option value="price">Cheapest</option>
-              <option value="newest">Newest listed</option>
-              <option value="mileage">Lowest km</option>
-              <option value="power">Most power</option>
-              <option value="year">Newest year</option>
-            </select>
-          </FilterField>
-
-          <FilterField label="Model">
-            <select name="model" defaultValue={model} className={field}>
-              <option value="">All models</option>
-              {models.map((m) => (
-                <option key={m.name} value={m.name}>{m.name}</option>
-              ))}
-            </select>
-          </FilterField>
-
-          <FilterField label="Fuel">
-            <select name="fuel" defaultValue={fuel} className={field}>
-              <option value="">Any fuel</option>
-              {FUELS.map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
-          </FilterField>
-
-          <FilterField label="Gearbox">
-            <select name="gearbox" defaultValue={gearbox} className={field}>
-              <option value="">Any gearbox</option>
-              {GEARBOXES.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </select>
-          </FilterField>
-
-          <FilterField label="Country">
-            <select name="country" defaultValue={country} className={field}>
-              <option value="">All countries</option>
-              {COUNTRIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </FilterField>
-
-          <FilterField label="Price band">
-            <select name="band" defaultValue={bandKey} className={field}>
-              {Object.entries(BANDS).map(([key, b]) => (
-                <option key={key} value={key}>{b.label}</option>
-              ))}
-            </select>
-          </FilterField>
-
-          <FilterField label="Year">
-            <div className="flex gap-1.5">
-              <input
-                type="number" name="yearFrom" placeholder="from" min={1960} max={2030}
-                defaultValue={yearFrom ?? ""} className={field}
-              />
-              <input
-                type="number" name="yearTo" placeholder="to" min={1960} max={2030}
-                defaultValue={yearTo ?? ""} className={field}
-              />
-            </div>
-          </FilterField>
-
-          <FilterField label="Min power">
-            <input
-              type="number" name="powerMin" placeholder="kW" min={20} max={600}
-              defaultValue={powerMin ?? ""} className={field}
-            />
-          </FilterField>
-
-          <FilterField label=" ">
-            <a
-              href={`/?view=${view}`}
-              className="flex w-full items-center justify-center rounded-lg border border-neutral-800 px-2.5 py-1.5 text-sm text-neutral-400 hover:border-neutral-600 hover:text-neutral-200"
-            >
-              Reset
+      <div className="mx-auto max-w-7xl px-4 pt-4 lg:hidden">
+        <details className="rounded-xl border border-neutral-800 bg-neutral-950 p-4">
+          <summary className="flex cursor-pointer select-none items-center justify-between text-sm font-semibold text-neutral-200">
+            Filters
+            <a href={`/?view=${view}`} className="text-xs font-medium text-emerald-500 hover:underline">
+              Clear all
             </a>
-          </FilterField>
-        </FilterForm>
-
-        <ul className="mt-4 space-y-3">
-          {cards.map((card) => (
-            <ListingCard key={card.id} card={card} />
-          ))}
-        </ul>
-
-        {cards.length === 0 ? (
-          <div className="mt-16 flex flex-col items-center gap-2 text-center">
-            <p className="text-3xl">🏜️</p>
-            <p className="text-sm font-medium text-neutral-300">Nothing matches these filters</p>
-            <p className="text-xs text-neutral-500">
-              Loosen a filter, or wait for the next scan.
-            </p>
+          </summary>
+          <div className="mt-3.5">
+            <FilterForm>
+              <input type="hidden" name="view" value={view} />
+              <FilterField label="Variant">
+                <select name="generation" defaultValue={generation} className={field}>
+                  <option value="">All 3 variants</option>
+                  {TARGET_VARIANTS.map((v) => (
+                    <option key={v.generation} value={v.generation}>{v.label}</option>
+                  ))}
+                </select>
+              </FilterField>
+              <FilterField label="Fuel">
+                <select name="fuel" defaultValue={fuel} className={field}>
+                  <option value="">Any fuel</option>
+                  {FUELS.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </FilterField>
+              <FilterField label="Gearbox">
+                <select name="gearbox" defaultValue={gearbox} className={field}>
+                  <option value="">Any gearbox</option>
+                  {GEARBOXES.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </FilterField>
+              <FilterField label="Country">
+                <select name="country" defaultValue={country} className={field}>
+                  <option value="">All countries</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </FilterField>
+              <FilterField label="Price band">
+                <select name="band" defaultValue={bandKey} className={field}>
+                  {Object.entries(BANDS).map(([key, b]) => (
+                    <option key={key} value={key}>{b.label}</option>
+                  ))}
+                </select>
+              </FilterField>
+              <FilterField label="Year">
+                <div className="flex gap-1.5">
+                  <input
+                    type="number" name="yearFrom" placeholder="from" min={1960} max={2030}
+                    defaultValue={yearFrom ?? ""} className={field}
+                  />
+                  <input
+                    type="number" name="yearTo" placeholder="to" min={1960} max={2030}
+                    defaultValue={yearTo ?? ""} className={field}
+                  />
+                </div>
+              </FilterField>
+              <FilterField label="Min power (kW)">
+                <input
+                  type="number" name="powerMin" placeholder="kW" min={20} max={600}
+                  defaultValue={powerMin ?? ""} className={field}
+                />
+              </FilterField>
+            </FilterForm>
           </div>
-        ) : null}
-      </main>
+        </details>
+      </div>
+
+      <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-5">
+        <aside className="hidden w-60 shrink-0 lg:block">
+          <div className="sticky top-20 rounded-xl border border-neutral-800 bg-neutral-950 p-4">
+            <div className="mb-3.5 flex items-center justify-between">
+              <span className="text-sm font-semibold text-neutral-200">Filters</span>
+              <a href={`/?view=${view}`} className="text-xs font-medium text-emerald-500 hover:underline">
+                Clear all
+              </a>
+            </div>
+
+            <FilterForm>
+              <input type="hidden" name="view" value={view} />
+
+              <FilterField label="Variant">
+                <select name="generation" defaultValue={generation} className={field}>
+                  <option value="">All 3 variants</option>
+                  {TARGET_VARIANTS.map((v) => (
+                    <option key={v.generation} value={v.generation}>{v.label}</option>
+                  ))}
+                </select>
+              </FilterField>
+
+              <FilterField label="Fuel">
+                <select name="fuel" defaultValue={fuel} className={field}>
+                  <option value="">Any fuel</option>
+                  {FUELS.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </FilterField>
+
+              <FilterField label="Gearbox">
+                <select name="gearbox" defaultValue={gearbox} className={field}>
+                  <option value="">Any gearbox</option>
+                  {GEARBOXES.map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </FilterField>
+
+              <FilterField label="Country">
+                <select name="country" defaultValue={country} className={field}>
+                  <option value="">All countries</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </FilterField>
+
+              <FilterField label="Price band">
+                <select name="band" defaultValue={bandKey} className={field}>
+                  {Object.entries(BANDS).map(([key, b]) => (
+                    <option key={key} value={key}>{b.label}</option>
+                  ))}
+                </select>
+              </FilterField>
+
+              <FilterField label="Year">
+                <div className="flex gap-1.5">
+                  <input
+                    type="number" name="yearFrom" placeholder="from" min={1960} max={2030}
+                    defaultValue={yearFrom ?? ""} className={field}
+                  />
+                  <input
+                    type="number" name="yearTo" placeholder="to" min={1960} max={2030}
+                    defaultValue={yearTo ?? ""} className={field}
+                  />
+                </div>
+              </FilterField>
+
+              <FilterField label="Min power (kW)">
+                <input
+                  type="number" name="powerMin" placeholder="kW" min={20} max={600}
+                  defaultValue={powerMin ?? ""} className={field}
+                />
+              </FilterField>
+            </FilterForm>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold text-neutral-100">
+                {cards.length} listing{cards.length === 1 ? "" : "s"}
+              </h2>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {chips.map((c) => (
+                  <FilterChip key={c.key} label={c.label} href={chipHref(c.key)} />
+                ))}
+              </div>
+            </div>
+
+            <FilterForm>
+              <div className="flex items-center gap-1.5 text-sm text-neutral-400">
+                <input type="hidden" name="view" value={view} />
+                {generation ? <input type="hidden" name="generation" value={generation} /> : null}
+                {fuel ? <input type="hidden" name="fuel" value={fuel} /> : null}
+                {gearbox ? <input type="hidden" name="gearbox" value={gearbox} /> : null}
+                {country ? <input type="hidden" name="country" value={country} /> : null}
+                {bandKey !== "medium" ? <input type="hidden" name="band" value={bandKey} /> : null}
+                Sort:
+                <select
+                  name="sort"
+                  defaultValue={sort}
+                  className="rounded-lg border border-neutral-800 bg-neutral-900 px-2 py-1 text-sm text-neutral-200 outline-none focus:border-neutral-500"
+                >
+                  {Object.entries(SORT_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+              </div>
+            </FilterForm>
+          </div>
+
+          <ul className="space-y-3">
+            {cards.map((card) => (
+              <ListingCard key={card.id} card={card} />
+            ))}
+          </ul>
+
+          {cards.length === 0 ? (
+            <div className="mt-16 flex flex-col items-center gap-2 text-center">
+              <p className="text-3xl">🏜️</p>
+              <p className="text-sm font-medium text-neutral-300">Nothing matches these filters</p>
+              <p className="text-xs text-neutral-500">
+                Loosen a filter, or wait for the next scan.
+              </p>
+            </div>
+          ) : null}
+        </main>
+      </div>
     </div>
   );
 }

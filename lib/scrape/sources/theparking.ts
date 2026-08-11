@@ -2,6 +2,7 @@ import * as cheerio from "cheerio";
 import { brightdataAvailable, fetchViaBrightdata } from "../brightdata";
 import { parseMileage, parsePrice, parseYear } from "../parse";
 import type { RawListing, Source } from "../types";
+import { TARGET_VARIANTS } from "../../target-variants";
 
 /**
  * theparking.eu, a pan-European meta-search aggregator (pulls from
@@ -33,24 +34,11 @@ import type { RawListing, Source } from "../types";
 
 const SEARCH_URL = "https://www.theparking.eu/used-cars/Toyota-Land-Cruiser.html";
 
-type TargetVariant = {
-  label: string;
-  displacement: string;
-  fuel: "diesel" | "petrol";
-  yearFrom: number;
-  yearTo: number;
-};
-
-// The three configurations the owner is actually shopping for. Year window
-// is what disambiguates them: theparking's own ENGINE facet confirmed 3.0,
-// 4.5 and 4.7 all recur across multiple Land Cruiser generations, so
-// displacement + fuel alone is not enough.
-export const TARGET_VARIANTS: TargetVariant[] = [
-  { label: "Prado 120 3.0 D-4D (1KD-FTV)", displacement: "3.0", fuel: "diesel", yearFrom: 2006, yearTo: 2009 },
-  { label: "100 Series 4.7 V8 (2UZ-FE)", displacement: "4.7", fuel: "petrol", yearFrom: 1998, yearTo: 2007 },
-  { label: "80 Series 4.5 (1FZ-FE)", displacement: "4.5", fuel: "petrol", yearFrom: 1992, yearTo: 1997 },
-];
-
+// Year window is what disambiguates the 3 target variants: theparking's own
+// ENGINE facet confirmed 3.0, 4.5 and 4.7 all recur across multiple Land
+// Cruiser generations, so displacement + fuel alone is not enough. Variant
+// data itself lives in lib/target-variants.ts, shared with ingest.ts so
+// every other source applies the exact same whitelist.
 function matchesTarget(displacement: string | undefined, fuel: string | undefined, year: number | undefined) {
   if (!displacement || !fuel || !year) return false;
   return TARGET_VARIANTS.some(

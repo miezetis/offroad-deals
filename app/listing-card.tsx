@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { clearFlag, hideListing, markOpened, starListing } from "./actions";
 import { ScoreBadge, type Factor } from "./score-badge";
 
@@ -8,8 +8,13 @@ import { ScoreBadge, type Factor } from "./score-badge";
 export type CardData = {
   id: string;
   url: string;
-  title: string;
-  chips: string[];
+  heading: string;
+  subtitle: string;
+  year: string | null;
+  mileage: string | null;
+  fuel: string | null;
+  power: string | null;
+  meta: string;
   price: string;
   median: string | null;
   medianNegative: boolean;
@@ -27,8 +32,57 @@ export type CardData = {
 };
 
 const badge = "rounded-md px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide";
-const iconBtn =
-  "rounded-lg border border-neutral-800 px-2.5 py-1.5 text-xs transition-colors hover:border-neutral-600 hover:bg-neutral-800";
+const cornerBtn =
+  "flex h-7 w-7 items-center justify-center rounded-full border border-neutral-700/80 bg-neutral-950/80 text-sm backdrop-blur transition-colors hover:border-neutral-500";
+
+const iconProps = { viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.3 } as const;
+
+function CalendarIcon() {
+  return (
+    <svg {...iconProps} className="h-3.5 w-3.5 shrink-0">
+      <rect x="2" y="3.5" width="12" height="10.5" rx="1.5" />
+      <path d="M2 6.5h12" />
+      <path d="M5 2v3M11 2v3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function GaugeIcon() {
+  return (
+    <svg {...iconProps} className="h-3.5 w-3.5 shrink-0">
+      <path d="M2.5 12a5.5 5.5 0 1 1 11 0" strokeLinecap="round" />
+      <path d="M8 12L10.5 8" strokeLinecap="round" />
+      <circle cx="8" cy="12" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function FuelIcon() {
+  return (
+    <svg {...iconProps} className="h-3.5 w-3.5 shrink-0">
+      <rect x="2.5" y="3" width="6" height="11" rx="1" />
+      <path d="M4.5 6.5h2" strokeLinecap="round" />
+      <path d="M8.5 6.5h1.5a1.5 1.5 0 0 1 1.5 1.5v4.5a1 1 0 0 0 2 0V7.5L12 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function BoltIcon() {
+  return (
+    <svg {...iconProps} className="h-3.5 w-3.5 shrink-0" strokeLinejoin="round">
+      <path d="M8.5 2 3.5 9h3.2L7 14l5-7.5H8.8z" />
+    </svg>
+  );
+}
+
+function Spec({ icon, value }: { icon: ReactNode; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-neutral-800/70 px-1.5 py-0.5 text-[11px] text-neutral-300">
+      {icon}
+      {value}
+    </span>
+  );
+}
 
 export function ListingCard({ card }: { card: CardData }) {
   // Optimistic: the click opens a new tab, the fade happens immediately,
@@ -55,7 +109,7 @@ export function ListingCard({ card }: { card: CardData }) {
         target="_blank"
         rel="noreferrer"
         onClick={open}
-        className="relative h-24 w-28 shrink-0 self-start overflow-hidden rounded-lg bg-neutral-900 ring-1 ring-neutral-800 sm:h-28 sm:w-40"
+        className="relative h-28 w-32 shrink-0 self-start overflow-hidden rounded-lg bg-neutral-900 ring-1 ring-neutral-800 sm:h-32 sm:w-44"
       >
         {card.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -77,17 +131,24 @@ export function ListingCard({ card }: { card: CardData }) {
         ) : null}
       </a>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {card.score != null ? (
-            <ScoreBadge score={card.score} breakdown={card.breakdown} />
-          ) : null}
-          {card.isNew && !opened ? (
-            <span className={`${badge} bg-sky-600 text-white`}>new</span>
-          ) : null}
-          {card.priceDrop ? (
-            <span className={`${badge} bg-purple-600 text-white`}>↓ {card.priceDrop}</span>
-          ) : null}
+      <div className="min-w-0 flex-1 pr-9 sm:pr-10">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {card.score != null ? <ScoreBadge score={card.score} breakdown={card.breakdown} /> : null}
+            {card.isNew && !opened ? <span className={`${badge} bg-sky-600 text-white`}>new</span> : null}
+            {card.priceDrop ? (
+              <span className={`${badge} bg-purple-600 text-white`}>↓ {card.priceDrop}</span>
+            ) : null}
+          </div>
+
+          <div className="text-right">
+            <div className="text-lg font-semibold tracking-tight text-neutral-100">{card.price}</div>
+            {card.median ? (
+              <div className={`text-xs ${card.medianNegative ? "text-emerald-500" : "text-neutral-500"}`}>
+                {card.median}
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <a
@@ -95,32 +156,30 @@ export function ListingCard({ card }: { card: CardData }) {
           target="_blank"
           rel="noreferrer"
           onClick={open}
-          className={`mt-1 line-clamp-2 font-medium leading-snug hover:underline ${
+          className={`mt-1.5 block font-semibold leading-snug hover:underline ${
             opened ? "text-neutral-400" : "text-neutral-100"
           }`}
         >
-          {card.title}
+          {card.heading}
+        </a>
+        <a
+          href={card.url}
+          target="_blank"
+          rel="noreferrer"
+          onClick={open}
+          className="line-clamp-1 text-sm text-neutral-500 hover:underline"
+        >
+          {card.subtitle}
         </a>
 
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {card.chips.map((chip, i) => (
-            <span
-              key={i}
-              className="rounded-md bg-neutral-800/70 px-1.5 py-0.5 text-[11px] text-neutral-400"
-            >
-              {chip}
-            </span>
-          ))}
+        <div className="mt-2 flex flex-wrap gap-1">
+          {card.year ? <Spec icon={<CalendarIcon />} value={card.year} /> : null}
+          {card.mileage ? <Spec icon={<GaugeIcon />} value={card.mileage} /> : null}
+          {card.fuel ? <Spec icon={<FuelIcon />} value={card.fuel} /> : null}
+          {card.power ? <Spec icon={<BoltIcon />} value={card.power} /> : null}
         </div>
 
-        <p className="mt-2 text-sm">
-          <span className="text-lg font-semibold tracking-tight">{card.price}</span>
-          {card.median ? (
-            <span className={card.medianNegative ? "text-emerald-500" : "text-neutral-500"}>
-              {" "}· {card.median}
-            </span>
-          ) : null}
-        </p>
+        <p className="mt-2 text-xs text-neutral-500">{card.meta}</p>
 
         {card.verdict ? (
           <details className="mt-2 text-sm">
@@ -138,21 +197,21 @@ export function ListingCard({ card }: { card: CardData }) {
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-col gap-1.5">
+      <div className="absolute right-3 top-3 flex flex-col gap-1.5 sm:right-4 sm:top-4">
         {card.flag ? (
           <form action={clearFlag}>
             <input type="hidden" name="id" value={card.id} />
-            <button className={`${iconBtn} text-neutral-400`} title="Restore">undo</button>
+            <button className={`${cornerBtn} text-neutral-400`} title="Restore">↺</button>
           </form>
         ) : (
           <>
             <form action={starListing}>
               <input type="hidden" name="id" value={card.id} />
-              <button className={`${iconBtn} text-amber-400`} title="Star">★</button>
+              <button className={`${cornerBtn} text-amber-400`} title="Star">★</button>
             </form>
             <form action={hideListing}>
               <input type="hidden" name="id" value={card.id} />
-              <button className={`${iconBtn} text-neutral-500`} title="Hide">✕</button>
+              <button className={`${cornerBtn} text-neutral-500`} title="Hide">✕</button>
             </form>
           </>
         )}

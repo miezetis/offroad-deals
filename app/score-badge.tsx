@@ -153,8 +153,11 @@ export function ScoreBadge({ score, breakdown }: { score: number; breakdown: Fac
             : // Belt and braces: on desktop a missing position would paint at
               // the document's top-left, so stay invisible for the frame it
               // takes to resolve. On mobile `null` is the intended state — the
-              // bottom-sheet classes already place it.
-              window.matchMedia(DESKTOP).matches
+              // bottom-sheet classes already place it. `overlay` is built on
+              // every render regardless of `open` (only its *use* is
+              // conditional), including the server's SSR pass, so this needs
+              // the typeof guard rather than relying on client-only code.
+              typeof window !== "undefined" && window.matchMedia(DESKTOP).matches
               ? { visibility: "hidden" }
               : undefined
         }

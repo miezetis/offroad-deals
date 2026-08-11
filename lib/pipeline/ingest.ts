@@ -1,7 +1,8 @@
 import { db } from "../db";
 import { plnToEur } from "../scrape/fx";
 import type { RawListing, Source } from "../scrape/types";
-import { matchVehicle, normalise } from "../vehicles";
+import { normalise } from "../vehicles";
+import { matchTargetVariant } from "../target-variants";
 
 /**
  * Keep the corpus wider than the buying band on purpose: the 12k Pajeros are
@@ -28,7 +29,10 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
   const stats: IngestStats = { seen: rows.length, kept: 0, inserted: 0, priceDrops: 0 };
 
   for (let row of rows) {
-    const vehicle = matchVehicle(row.title, row.year);
+    // Owner's call 2026-08-11: only the 3 Land Cruiser variants in
+    // lib/target-variants.ts, across every source. Not the general
+    // lib/vehicles.ts whitelist any more.
+    const vehicle = matchTargetVariant(row.title, row.year, row.fuel);
     if (!vehicle) continue;
 
     const priceEur = row.currency === "PLN" ? await plnToEur(row.price) : row.price;
