@@ -15,6 +15,20 @@ const SORTS: Record<string, string> = {
 };
 
 const COUNTRIES = ["EE", "LV", "LT", "FI", "PL", "SK", "DE", "NL", "IT"];
+
+/**
+ * Asking price, since shipping and import costs depend entirely on where the
+ * reader lives. `max: null` means no ceiling, bounded only by the 35k
+ * ingest cap.
+ */
+const BANDS = {
+  small: { label: "Up to 5k", min: 0, max: 5000 },
+  medium: { label: "5k-12k", min: 5000, max: 12000 },
+  large: { label: "12k-20k", min: 12000, max: 20000 },
+  all: { label: "All prices", min: 0, max: null },
+} satisfies Record<string, { label: string; min: number; max: number | null }>;
+
+type BandKey = keyof typeof BANDS;
 const FUELS = ["diesel", "petrol", "lpg", "hybrid", "electric"];
 const GEARBOXES = ["manual", "automatic"];
 
@@ -35,7 +49,7 @@ type Row = {
   price_eur: string;
   location: string | null;
   image_url: string | null;
-  first_seen: string;
+  is_new: boolean;
   score: number | null;
   breakdown: Factor[] | null;
   ai_score: number | null;
@@ -44,7 +58,6 @@ type Row = {
   inspect: string[] | null;
   market_median_eur: string | null;
   price_delta_pct: string | null;
-  landed_cost_eur: string | null;
   flag: string | null;
   opened_at: string | null;
   first_price: string | null;
@@ -67,7 +80,7 @@ function ago(date: string) {
   return hours < 48 ? `${hours} h ago` : `${Math.round(hours / 24)} d ago`;
 }
 
-function toCard(r: Row, dayAgo: number): CardData {
+function toCard(r: Row): CardData {
   const chips: string[] = [];
   chips.push(`${r.make} ${r.model}${r.generation ? ` ${r.generation}` : ""}`);
   if (r.year) chips.push(String(r.year));
@@ -86,7 +99,6 @@ function toCard(r: Row, dayAgo: number): CardData {
     title: r.title,
     chips,
     price: eur(r.price_eur),
-    landed: r.landed_cost_eur ? eur(r.landed_cost_eur) : null,
     median:
       r.market_median_eur && r.price_delta_pct
         ? `${Math.round(Number(r.price_delta_pct))}% vs median ${eur(r.market_median_eur)}`
@@ -94,7 +106,7 @@ function toCard(r: Row, dayAgo: number): CardData {
     medianNegative: Number(r.price_delta_pct ?? 0) < 0,
     score: r.score,
     breakdown: r.breakdown ?? [],
-    isNew: new Date(r.first_seen).getTime() > dayAgo,
+    isNew: r.is_new,
     priceDrop: dropped ? `${eur(r.first_price)} → ${eur(r.price_eur)}` : null,
     imageUrl: r.image_url,
     verdict: r.verdict,
@@ -119,7 +131,8 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const fuel = pick("fuel", FUELS);
   const gearbox = pick("gearbox", GEARBOXES);
   const model = typeof params.model === "string" ? params.model : "";
-  const band = params.band === "all" ? "all" : "budget";
+  const bandKey = (String(params.band) in BANDS ? String(params.band) : "medium") as BandKey;
+  const band = BANDS[bandKey];
   const view =
     params.view === "starred" ? "starred" : params.view === "hidden" ? "hidden" : "main";
   const yearFrom = num(params.yearFrom);
@@ -137,8 +150,12 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   if (view === "main") where.push("(f.flag is null or f.flag = 'starred')");
   if (view === "starred") where.push("f.flag = 'starred'");
   if (view === "hidden") where.push("f.flag = 'hidden'");
-  if (band === "budget" && view === "main")
-    where.push("coalesce(e.landed_cost_eur, l.price_eur) between 3500 and 13000");
+  if (view === "main" && band.max !== null) {
+    args.push(band.min, band.max);
+    where.push(
+      `l.price_eur between $${args.length - 1} and $${args.length}`,
+    );
+  }
 
   if (country) add((i) => `l.country = $${i}`, country);
   if (model) add((i) => `(l.make || ' ' || l.model) ilike $${i}`, `%${model}%`);
@@ -151,9 +168,10 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const rows = (await sql.query(
     `select l.id, l.source, l.country, l.url, l.title, l.make, l.model, l.generation,
             l.year, l.mileage_km, l.fuel, l.transmission, l.power_kw, l.price_eur,
-            l.location, l.image_url, l.first_seen,
+            l.location, l.image_url,
+            (l.first_seen > now() - interval '24 hours') as is_new,
             e.score, e.breakdown, e.ai_score, e.verdict, e.risks, e.inspect,
-            e.market_median_eur, e.price_delta_pct, e.landed_cost_eur,
+            e.market_median_eur, e.price_delta_pct,
             f.flag, f.opened_at,
             (select ph.price_eur from price_history ph
               where ph.listing_id = l.id order by ph.seen_at asc limit 1) as first_price
@@ -174,8 +192,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     `select finished_at from scan_runs order by id desc limit 1`,
   )) as { finished_at: string }[];
 
-  const dayAgo = Date.now() - 24 * 3600 * 1000;
-  const cards = rows.map((r) => toCard(r, dayAgo));
+  const cards = rows.map(toCard);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-950 to-black">
@@ -260,9 +277,10 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           </FilterField>
 
           <FilterField label="Price band">
-            <select name="band" defaultValue={band} className={field}>
-              <option value="budget">3.5k-13k landed</option>
-              <option value="all">All prices</option>
+            <select name="band" defaultValue={bandKey} className={field}>
+              {Object.entries(BANDS).map(([key, b]) => (
+                <option key={key} value={key}>{b.label}</option>
+              ))}
             </select>
           </FilterField>
 

@@ -6,16 +6,17 @@ import { db } from "../db";
  * every listing is judged against real asking prices for the same model, not
  * a guess.
  *
+ * The score rates the **advert**, not its fit to any particular buyer. Every
+ * factor is a property of the listing or the vehicle that any reader would
+ * agree on: what it costs against comparable cars, how hard it has been used
+ * for its age, whether the seller's own text admits to faults, and how
+ * completely the ad is filled in. Personal preferences (fuel, gearbox,
+ * budget, where you live and what shipping would cost you) are deliberately
+ * absent — those belong in the filters, where each reader sets their own.
+ *
  * Every factor records what it contributed and why, and that breakdown is
  * stored alongside the score so the UI can explain any number it shows.
  */
-
-/** Rough door-to-door transport into Lithuania, EUR. */
-const TRANSPORT_EUR: Record<string, number> = {
-  LT: 0, LV: 150, EE: 250, PL: 300, SK: 450, DE: 700, FI: 500, NL: 850, IT: 1100,
-};
-/** LT registration, plates, mandatory checks for an import. */
-const REGISTRATION_EUR = 150;
 
 /**
  * Everything starts here so that a listing failing one factor still ranks
@@ -26,6 +27,12 @@ const BASELINE = 20;
 
 /** Typical annual distance for these vehicles, used to judge mileage by age. */
 const EXPECTED_KM_PER_YEAR = 15000;
+
+/**
+ * Below this, a listing for any vehicle on the whitelist is almost never a
+ * running, road-legal car. Not a budget rule — a plausibility one.
+ */
+const IMPLAUSIBLY_CHEAP_EUR = 2000;
 
 export type Factor = {
   label: string;
@@ -38,7 +45,6 @@ export type Scored = {
   score: number;
   marketMedian: number | null;
   priceDeltaPct: number | null;
-  landedCost: number;
   contentHash: string;
   breakdown: Factor[];
 };
@@ -93,7 +99,7 @@ function valueFactor(priceDeltaPct: number | null, compCount: number): Factor {
   // Thin samples make an extreme median untrustworthy, so their influence
   // is damped rather than trusted outright.
   const confidence = compCount >= 20 ? 1 : compCount >= 10 ? 0.85 : 0.7;
-  const raw = Math.max(-25, Math.min(45, -priceDeltaPct * 1.3));
+  const raw = Math.max(-28, Math.min(50, -priceDeltaPct * 1.3));
   const points = Math.round(raw * confidence);
   const direction = priceDeltaPct < 0 ? "below" : "above";
 
@@ -143,7 +149,9 @@ export async function scoreAll(): Promise<{ scored: number; top: Scored[] }> {
   const byModel = new Map<string, Row[]>();
   for (const row of rows) {
     const key = `${row.make}|${row.model}`;
-    byModel.get(key)?.push(row) ?? byModel.set(key, [row]);
+    const bucket = byModel.get(key);
+    if (bucket) bucket.push(row);
+    else byModel.set(key, [row]);
   }
 
   const results: Scored[] = [];
@@ -175,34 +183,22 @@ export async function scoreAll(): Promise<{ scored: number; top: Scored[] }> {
     const desirability = row.raw?.desirability ?? 5;
     breakdown.push({
       label: "Model",
-      points: Math.round((Math.min(13, desirability) / 13) * 15),
+      points: Math.round((Math.min(13, desirability) / 13) * 18),
       detail: `${row.make} ${row.model} rates ${desirability}/13 as an offroader`,
-    });
-
-    const drivetrainPoints = (row.fuel === "diesel" ? 6 : 0) + (row.transmission === "manual" ? 4 : 0);
-    breakdown.push({
-      label: "Drivetrain",
-      points: drivetrainPoints,
-      detail:
-        [row.fuel ?? "fuel unknown", row.transmission ?? "gearbox unknown"].join(", ") +
-        (drivetrainPoints === 10 ? " (both preferred)" : ""),
     });
 
     breakdown.push(mileageFactor(row.mileage_km, row.year));
 
-    const transport = TRANSPORT_EUR[row.country] ?? 400;
-    const landedCost = Math.round(price + transport + (row.country === "LT" ? 0 : REGISTRATION_EUR));
-
-    const budgetPoints =
-      landedCost < 2500 ? -10 : landedCost <= 11000 ? 8 : landedCost <= 14000 ? 3 : -5;
-    breakdown.push({
-      label: "Budget fit",
-      points: budgetPoints,
-      detail:
-        landedCost < 2500
-          ? `~${landedCost} EUR landed, suspiciously cheap for a running car`
-          : `~${landedCost} EUR landed (${price} + ${transport} transport from ${row.country})`,
-    });
+    // Not a budget test — a plausibility test. A running 4x4 priced this far
+    // under the floor for its own model is usually a non-runner, a parts car,
+    // or bait, and the price alone is the tell.
+    if (price < IMPLAUSIBLY_CHEAP_EUR) {
+      breakdown.push({
+        label: "Price plausibility",
+        points: -12,
+        detail: `${price} EUR is below what a running example of anything on this list sells for`,
+      });
+    }
 
     const haystack = `${row.title} ${row.description ?? ""}`;
     const hits = RED_FLAGS.filter(([re]) => re.test(haystack)).map(([, label]) => label);
@@ -241,7 +237,6 @@ export async function scoreAll(): Promise<{ scored: number; top: Scored[] }> {
       score,
       marketMedian,
       priceDeltaPct,
-      landedCost,
       contentHash,
       breakdown,
     });
@@ -252,18 +247,18 @@ export async function scoreAll(): Promise<{ scored: number; top: Scored[] }> {
       `insert into evaluations
          (listing_id, content_hash, score, market_median_eur, price_delta_pct,
           landed_cost_eur, breakdown)
-       values ($1,$2,$3,$4,$5,$6,$7)
+       values ($1,$2,$3,$4,$5,null,$6)
        on conflict (listing_id) do update set
          content_hash = excluded.content_hash,
          score = excluded.score,
          market_median_eur = excluded.market_median_eur,
          price_delta_pct = excluded.price_delta_pct,
-         landed_cost_eur = excluded.landed_cost_eur,
+         landed_cost_eur = null,
          breakdown = excluded.breakdown,
          evaluated_at = now()`,
       [
         r.id, r.contentHash, r.score, r.marketMedian, r.priceDeltaPct,
-        r.landedCost, JSON.stringify(r.breakdown),
+        JSON.stringify(r.breakdown),
       ],
     );
   }

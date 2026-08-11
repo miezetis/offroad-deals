@@ -11,7 +11,6 @@ export type CardData = {
   title: string;
   chips: string[];
   price: string;
-  landed: string | null;
   median: string | null;
   medianNegative: boolean;
   score: number | null;
@@ -116,7 +115,6 @@ export function ListingCard({ card }: { card: CardData }) {
 
         <p className="mt-2 text-sm">
           <span className="text-lg font-semibold tracking-tight">{card.price}</span>
-          {card.landed ? <span className="text-neutral-500"> · ~{card.landed} landed</span> : null}
           {card.median ? (
             <span className={card.medianNegative ? "text-emerald-500" : "text-neutral-500"}>
               {" "}· {card.median}

@@ -150,7 +150,13 @@ export function ScoreBadge({ score, breakdown }: { score: number; breakdown: Fac
         style={
           position
             ? { left: position.left, top: position.top, bottom: position.bottom, right: "auto" }
-            : undefined
+            : // Belt and braces: on desktop a missing position would paint at
+              // the document's top-left, so stay invisible for the frame it
+              // takes to resolve. On mobile `null` is the intended state — the
+              // bottom-sheet classes already place it.
+              window.matchMedia(DESKTOP).matches
+              ? { visibility: "hidden" }
+              : undefined
         }
       >
         <div className="mb-2 flex items-center justify-between gap-2 border-b border-neutral-800 pb-2">
@@ -208,8 +214,14 @@ export function ScoreBadge({ score, breakdown }: { score: number; breakdown: Fac
         // Only a real mouse opens on hover. Touch devices emit an emulated
         // mouseenter on tap, which would otherwise leave the panel stuck open
         // with no pointer to move away.
+        // Position is computed in the same update that opens the panel. A
+        // first render without coordinates would paint a fixed element at its
+        // static position — the top of the document, since the portal hangs
+        // off <body> — and it would visibly jump into place a frame later.
         onPointerEnter={(e) => {
-          if (e.pointerType === "mouse") setHovered(true);
+          if (e.pointerType !== "mouse") return;
+          reposition();
+          setHovered(true);
         }}
         onPointerLeave={(e) => {
           if (e.pointerType === "mouse") setHovered(false);

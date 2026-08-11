@@ -27,7 +27,6 @@ type Candidate = {
   score: number;
   market_median_eur: string | null;
   price_delta_pct: string | null;
-  landed_cost_eur: string | null;
   content_hash: string;
 };
 
@@ -44,7 +43,7 @@ export async function evaluateTop(): Promise<number> {
   const candidates = (await sql.query(
     `select l.id, l.title, l.country, l.make, l.model, l.generation, l.year,
             l.mileage_km, l.fuel, l.transmission, l.price_eur, l.description,
-            e.score, e.market_median_eur, e.price_delta_pct, e.landed_cost_eur,
+            e.score, e.market_median_eur, e.price_delta_pct,
             e.content_hash
      from listings l
      join evaluations e on e.listing_id = l.id
@@ -71,16 +70,23 @@ export async function evaluateTop(): Promise<number> {
       [c.make, c.model, c.id, c.year, c.mileage_km],
     )) as { country: string; year: number | null; mileage_km: number | null; price_eur: string }[];
 
-    const prompt = `You are evaluating a used 4x4 listing for a buyer in Lithuania who wants a
-first serious offroad or overlanding vehicle, budget 5000-10000 EUR landed,
-diesel and manual preferred, no rotten frames or dead engines, minor work fine.
+    const prompt = `You are appraising a used 4x4 advert for a general audience of
+buyers. You do not know who is reading, where they live, what they can spend,
+or what they want the vehicle for, so judge the advert on its own merits:
+is this a good deal for this vehicle at this price, and what should anyone
+know before contacting the seller?
+
+Do not assume a budget, a country, a preferred fuel or gearbox, or an
+intended use. Do not mention shipping, import or registration costs. If the
+price is strong for the specification and condition, say so plainly even if
+the car is expensive in absolute terms; a well-priced 18000 EUR truck is a
+good deal and a poorly-priced 4000 EUR one is not.
 
 LISTING
 Model: ${c.make} ${c.model}${c.generation ? ` (${c.generation})` : ""}
 Year: ${c.year ?? "unknown"} | Mileage: ${c.mileage_km ? `${c.mileage_km} km` : "unknown"}
 Fuel: ${c.fuel ?? "unknown"} | Gearbox: ${c.transmission ?? "unknown"}
 Price: ${c.price_eur} EUR, located in ${c.country}
-Estimated landed cost in Lithuania: ${c.landed_cost_eur ?? "unknown"} EUR
 Market median for comparable cars in our scraped corpus: ${c.market_median_eur ?? "insufficient data"} EUR
 Title: ${c.title}
 Seller text: ${(c.description ?? "").slice(0, 600) || "(none)"}
@@ -89,8 +95,8 @@ REAL COMPARABLE LISTINGS FROM THE SAME CORPUS
 ${comps.map((k) => `- ${k.year ?? "?"} | ${k.mileage_km ?? "?"} km | ${k.price_eur} EUR | ${k.country}`).join("\n") || "(none)"}
 
 Respond with strict JSON only:
-{"ai_score": <0-100 bang-for-buck for THIS buyer>,
- "verdict": "<2-3 sentences: why it is or is not a good buy>",
+{"ai_score": <0-100, how good this advert is as a deal on its own terms>,
+ "verdict": "<2-3 sentences on whether the asking price is justified by the specification, condition and comparables>",
  "risks": ["<up to 4 short risk phrases specific to this ad and model>"],
  "inspect": ["<up to 4 things to check before buying, model-specific>"]}`;
 

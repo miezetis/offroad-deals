@@ -73,12 +73,12 @@ async function main() {
 
   // Fresh high scorers from this run become the notification payload.
   const newDeals = (await sql.query(
-    `select l.id, l.title, l.url, l.country, l.price_eur, e.score, e.landed_cost_eur
+    `select l.id, l.title, l.url, l.country, l.price_eur, e.score
      from listings l join evaluations e on e.listing_id = l.id
      where l.is_active and e.score >= 70 and l.first_seen >= $1
      order by e.score desc limit 10`,
     [startedAt.toISOString()],
-  )) as { title: string; url: string; country: string; price_eur: string; score: number; landed_cost_eur: string }[];
+  )) as { title: string; url: string; country: string; price_eur: string; score: number }[];
 
   if (newDeals.length) {
     setOutput(
@@ -86,7 +86,7 @@ async function main() {
       newDeals
         .map(
           (d) =>
-            `- [${d.score}] ${d.title.slice(0, 80)} | ${Math.round(Number(d.price_eur))} EUR (${d.country}, ~${Math.round(Number(d.landed_cost_eur))} landed) | ${d.url}`,
+            `- [${d.score}] ${d.title.slice(0, 80)} | ${Math.round(Number(d.price_eur))} EUR (${d.country}) | ${d.url}`,
         )
         .join("\n"),
     );

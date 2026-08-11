@@ -1,7 +1,9 @@
 # Offroad Deals
 
 Scans European classified sites every two hours for underpriced 4x4s, scores
-them against a self-built market reference, and lists the best ones.
+each advert against a market reference built from its own scraped corpus, and
+lists the best deals. The scoring judges the advert, not the reader, so it is
+useful to anyone shopping for one of these vehicles.
 
 The code is public; the running instance is not. It lives at
 `offroad.miezetis.com` behind a password, and its database, listings, and all
@@ -9,27 +11,33 @@ credentials are private. Nothing here is secret: no keys are committed, and
 every secret is injected at runtime from GitHub Actions secrets and Vercel
 environment variables.
 
-Built for one specific buyer (see the profile below), so the model whitelist
-and scoring weights are opinionated rather than general-purpose.
+## What the score means
 
-## Buyer profile
+The score rates the **advert**, not its fit to any particular person. Anyone
+can read it the same way. Every factor is a property of the listing or the
+vehicle:
 
-Driving every filter and score in the app:
+| Factor | Range | What it measures |
+|---|---|---|
+| Baseline | +20 | Every listing starts here, so one bad factor does not bottom out the score |
+| Market value | -28 to **+50** | Asking price against the median of comparable listings for the same model, from this tool's own corpus. Damped when few comparables exist |
+| Model | 0 to +18 | How capable the vehicle is offroad, independent of price |
+| Mileage | -15 to +10 | Distance per year of age, not the raw odometer, so an old truck is not punished for being old |
+| Red flags | -30 to 0 | Phrases in the seller's own text: engine damage, no roadworthiness certificate, sold for parts, accident |
+| Missing data | -9 to 0 | Ads that do not state year, mileage or fuel are harder to trust and to compare |
+| Price plausibility | -12 | Under 2,000 EUR is rarely a running, road-legal example of anything on the list |
 
-| | |
-|---|---|
-| Based in | Lithuania |
-| Will travel | Anywhere in EE / LV / LT / FI / PL / SK / DE / NL / IT |
-| Budget | 5,000 to 10,000 EUR (car only, before transport and registration) |
-| Vehicles | Wide list of body-on-frame 4x4s, pickups, one van, and Subaru wagons, see `lib/vehicles.ts` |
-| Fuel | Diesel preferred, petrol and LPG acceptable |
-| Transmission | Manual preferred (scoring bonus, not a hard filter) |
-| Condition floor | Minor work acceptable, no rotten frame and no blown engine |
+Deliberately **not** in the score: budget, fuel, gearbox, location, shipping
+or import costs. Those are personal, so they live in the filters where each
+reader sets their own. A well-priced 18,000 EUR truck scores well and an
+overpriced 4,000 EUR one does not.
 
-Scope history: narrowed to Toyota/Subaru only on 2026-08-10, reopened the
-next day to the full list plus pickups (Hilux, D-Max, L200, Tacoma) and a
-van (Delica). Each change is its own commit if you need to see exactly what
-changed.
+## Vehicles covered
+
+A wide list of body-on-frame 4x4s, pickups, one van, and Subaru wagons; the
+full whitelist with per-generation notes is in `lib/vehicles.ts`. Anything not
+on it is discarded before it reaches the database, which is what keeps the
+tool free of the crossover noise that dominates these sites.
 
 ## Architecture
 
@@ -41,13 +49,15 @@ changed.
 - **Database**: Neon Postgres. `listings`, `price_history`, `evaluations`,
   `scan_runs`, `user_flags`.
 - **Scoring** (`lib/pipeline/score.ts`): the corpus is scraped wide
-  (500-35000 EUR) so the 12k cars prove the 7k car is cheap. Median per model
-  within +-3 years (min 5 comps), price delta, desirability, diesel and manual
-  bonuses, mileage bands, landed-cost window, red-flag phrases.
+  (500-35000 EUR) so the expensive cars prove the cheap one is cheap. Median
+  per model within +-3 years (min 5 comps, damped below 20), mileage per year
+  of age, offroad pedigree, red-flag phrases, missing fields, and a price
+  plausibility floor. See "What the score means" above.
 - **AI pass** (`lib/pipeline/evaluate.ts`): Claude Haiku reads only the top
   candidates (score >= 55, max 12 per run), grounded with 5 real comps from
-  the corpus, cached by content hash so a listing is paid for once until it
-  changes.
+  the corpus, and is instructed to appraise the advert for a general
+  audience rather than any one buyer. Cached by content hash so a listing is
+  paid for once until it changes.
 - **Autonomy**: new deals scoring >= 70 arrive as GitHub issues labelled
   `deals`; parser drift or blocks file under `health`; a weekly heartbeat
   commit defeats GitHub's 60-day scheduled-workflow disable; a `concurrency`
