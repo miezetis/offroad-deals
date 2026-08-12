@@ -89,6 +89,22 @@ alter table user_flags add column if not exists opened_at timestamptz;
 alter table evaluations add column if not exists bucket text;
 alter table evaluations add column if not exists category_breakdown jsonb;
 
+-- Single-user settings for the email alert, editable from /alerts (mirrors
+-- theparking.eu's own "Create an alert" modal: on/off, a score threshold,
+-- and a frequency cap so a burst of new deals in one scan doesn't spam).
+-- Singleton row, id is always 1.
+create table if not exists alert_settings (
+  id              int primary key default 1,
+  enabled         boolean     not null default true,
+  min_score       int         not null default 70,
+  -- 0 = no cooldown, email every run a qualifying deal appears.
+  frequency_hours int         not null default 0,
+  recipient_email text,
+  last_sent_at    timestamptz,
+  constraint alert_settings_singleton check (id = 1)
+);
+insert into alert_settings (id) values (1) on conflict (id) do nothing;
+
 -- One row per scan run: what each source returned, for drift detection.
 create table if not exists scan_runs (
   id           bigint generated always as identity primary key,

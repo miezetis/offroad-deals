@@ -72,13 +72,26 @@ async function main() {
     [startedAt.toISOString(), depth, JSON.stringify(counts), inserted, drops],
   );
 
+  // Editable from /alerts, mirrors theparking.eu's own alert modal: an
+  // on/off switch, a score threshold, and a frequency cap so a burst of
+  // qualifying deals in one scan run doesn't email every 30 minutes.
+  const settingsRows = (await sql.query(
+    "select enabled, min_score, frequency_hours, recipient_email, last_sent_at from alert_settings where id = 1",
+  )) as {
+    enabled: boolean; min_score: number; frequency_hours: number;
+    recipient_email: string | null; last_sent_at: string | null;
+  }[];
+  const alertSettings = settingsRows[0] ?? {
+    enabled: true, min_score: 70, frequency_hours: 0, recipient_email: null, last_sent_at: null,
+  };
+
   // Fresh high scorers from this run become the notification payload.
   const newDeals = (await sql.query(
     `select l.id, l.title, l.url, l.country, l.price_eur, e.score
      from listings l join evaluations e on e.listing_id = l.id
-     where l.is_active and e.score >= 70 and l.first_seen >= $1
+     where l.is_active and e.score >= $2 and l.first_seen >= $1
      order by e.score desc limit 10`,
-    [startedAt.toISOString()],
+    [startedAt.toISOString(), alertSettings.min_score],
   )) as { title: string; url: string; country: string; price_eur: string; score: number }[];
 
   if (newDeals.length) {
@@ -91,7 +104,16 @@ async function main() {
         )
         .join("\n"),
     );
-    await sendDealAlert(newDeals);
+
+    const cooldownOk =
+      alertSettings.frequency_hours === 0 ||
+      !alertSettings.last_sent_at ||
+      startedAt.getTime() - new Date(alertSettings.last_sent_at).getTime() >= alertSettings.frequency_hours * 3_600_000;
+
+    if (alertSettings.enabled && cooldownOk) {
+      await sendDealAlert(newDeals, alertSettings.recipient_email);
+      await sql.query("update alert_settings set last_sent_at = now() where id = 1");
+    }
   }
   if (warnings.length) setOutput("health_warnings", warnings.join("\n"));
 

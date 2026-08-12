@@ -19,9 +19,9 @@ function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-export async function sendDealAlert(deals: Deal[]): Promise<void> {
+export async function sendDealAlert(deals: Deal[], recipientOverride?: string | null): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
-  const to = process.env.ALERT_EMAIL_TO;
+  const to = recipientOverride || process.env.ALERT_EMAIL_TO;
   if (!apiKey || !to || deals.length === 0) return;
 
   const rows = deals
@@ -36,7 +36,7 @@ export async function sendDealAlert(deals: Deal[]): Promise<void> {
     )
     .join("");
 
-  const html = `<p>${deals.length} new deal${deals.length > 1 ? "s" : ""} scored 70+:</p>
+  const html = `<p>${deals.length} new deal${deals.length > 1 ? "s" : ""} matching your alert threshold:</p>
     <table cellspacing="0" style="border-collapse:collapse">
       <tr><th align="left">Score</th><th align="left">Title</th><th align="left">Price</th><th align="left">Country</th><th></th></tr>
       ${rows}

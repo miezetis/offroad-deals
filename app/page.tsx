@@ -246,21 +246,36 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               {lastScan[0] ? ` · scanned ${ago(lastScan[0].finished_at)}` : ""}
             </p>
           </div>
-          <nav className="flex rounded-lg border border-neutral-800 bg-neutral-900 p-0.5 text-sm">
-            {(["main", "starred", "hidden"] as const).map((v) => (
-              <a
-                key={v}
-                href={`/?view=${v}`}
-                className={`rounded-md px-3 py-1.5 transition-colors ${
-                  view === v
-                    ? "bg-neutral-100 font-medium text-neutral-900"
-                    : "text-neutral-400 hover:text-neutral-200"
-                }`}
-              >
-                {v === "main" ? "Deals" : v === "starred" ? "★" : "Hidden"}
-              </a>
-            ))}
-          </nav>
+          <div className="flex items-center gap-2">
+            <nav className="flex rounded-lg border border-neutral-800 bg-neutral-900 p-0.5 text-sm">
+              {(["main", "starred", "hidden"] as const).map((v) => (
+                <a
+                  key={v}
+                  href={`/?view=${v}`}
+                  className={`rounded-md px-3 py-1.5 transition-colors ${
+                    view === v
+                      ? "bg-neutral-100 font-medium text-neutral-900"
+                      : "text-neutral-400 hover:text-neutral-200"
+                  }`}
+                >
+                  {v === "main" ? "Deals" : v === "starred" ? "★" : "Hidden"}
+                </a>
+              ))}
+            </nav>
+            <a
+              href="/alerts"
+              title="Manage deal alerts"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-800 bg-neutral-900 text-neutral-400 transition-colors hover:border-neutral-600 hover:text-neutral-200"
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" className="h-4 w-4">
+                <path
+                  d="M8 2.5c-2 0-3 1.7-3 4v1.5c0 .8-.3 1.4-1 2h8c-.7-.6-1-1.2-1-2V6.5c0-2.3-1-4-3-4z"
+                  strokeLinecap="round" strokeLinejoin="round"
+                />
+                <path d="M6.5 12.5a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
+              </svg>
+            </a>
+          </div>
         </div>
       </header>
 

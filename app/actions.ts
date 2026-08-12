@@ -41,3 +41,19 @@ export async function markOpened(listingId: string) {
     [listingId],
   );
 }
+
+export async function updateAlertSettings(formData: FormData) {
+  const sql = db();
+  const enabled = formData.get("enabled") === "on";
+  const minScore = Math.max(0, Math.min(100, parseInt(String(formData.get("minScore")), 10) || 0));
+  const frequencyHours = Math.max(0, parseInt(String(formData.get("frequencyHours")), 10) || 0);
+  const recipientEmail = String(formData.get("recipientEmail") ?? "").trim() || null;
+
+  await sql.query(
+    `update alert_settings
+     set enabled = $1, min_score = $2, frequency_hours = $3, recipient_email = $4
+     where id = 1`,
+    [enabled, minScore, frequencyHours, recipientEmail],
+  );
+  revalidatePath("/alerts");
+}
