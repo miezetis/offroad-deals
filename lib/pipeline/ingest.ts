@@ -29,9 +29,8 @@ export async function ingest(source: Source, rows: RawListing[]): Promise<Ingest
   const stats: IngestStats = { seen: rows.length, kept: 0, inserted: 0, priceDrops: 0 };
 
   for (let row of rows) {
-    // Owner's call 2026-08-11: only the 3 Land Cruiser variants in
-    // lib/target-variants.ts, across every source. Not the general
-    // lib/vehicles.ts whitelist any more.
+    // Owner's call 2026-08-11: only the variants in lib/target-variants.ts,
+    // across every source. Not the general lib/vehicles.ts whitelist any more.
     const vehicle = matchTargetVariant(row.title, row.year, row.fuel);
     if (!vehicle) continue;
 

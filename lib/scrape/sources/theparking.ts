@@ -33,12 +33,17 @@ import { matchTargetVariant } from "../../target-variants";
  */
 
 const SEARCH_URLS = [
+  // Covers every Land Cruiser generation in one page, including the
+  // 200-series 5.7 V8 added 2026-08-13 — no separate URL needed for it.
   "https://www.theparking.eu/used-cars/Toyota-Land-Cruiser.html",
   // Unverified guess at the same URL pattern for the Lexus GX470 (added
   // 2026-08-11). Should be validated via the `inspect` workflow before
   // fully trusting it; a wrong slug just yields 0 rows from this fetch,
   // not a crash.
   "https://www.theparking.eu/used-cars/Lexus-GX470.html",
+  // Verified 2026-08-13 via the `inspect` workflow: 25 real result cards,
+  // page title "Toyota 4Runner used".
+  "https://www.theparking.eu/used-cars/Toyota-4Runner.html",
 ];
 
 const FUEL_MAP: Record<string, "diesel" | "petrol" | "hybrid" | "lpg" | "electric"> = {

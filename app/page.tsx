@@ -154,7 +154,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const fuel = pick("fuel", FUELS);
   const gearbox = pick("gearbox", GEARBOXES);
   const generation = pick("generation", TARGET_GENERATIONS);
-  const bandKey = (String(params.band) in BANDS ? String(params.band) : "medium") as BandKey;
+  const bandKey = (String(params.band) in BANDS ? String(params.band) : "all") as BandKey;
   const band = BANDS[bandKey];
   const view =
     params.view === "starred" ? "starred" : params.view === "hidden" ? "hidden" : "main";
@@ -228,7 +228,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   if (fuel) chips.push({ key: "fuel", label: fuel });
   if (gearbox) chips.push({ key: "gearbox", label: gearbox });
   if (country) chips.push({ key: "country", label: country });
-  if (bandKey !== "medium") chips.push({ key: "band", label: BANDS[bandKey].label });
+  if (bandKey !== "all") chips.push({ key: "band", label: BANDS[bandKey].label });
   if (yearFrom) chips.push({ key: "yearFrom", label: `from ${yearFrom}` });
   if (yearTo) chips.push({ key: "yearTo", label: `to ${yearTo}` });
   if (powerMin) chips.push({ key: "powerMin", label: `${powerMin}+ kW` });
@@ -452,7 +452,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                 {fuel ? <input type="hidden" name="fuel" value={fuel} /> : null}
                 {gearbox ? <input type="hidden" name="gearbox" value={gearbox} /> : null}
                 {country ? <input type="hidden" name="country" value={country} /> : null}
-                {bandKey !== "medium" ? <input type="hidden" name="band" value={bandKey} /> : null}
+                {bandKey !== "all" ? <input type="hidden" name="band" value={bandKey} /> : null}
                 Sort:
                 <select
                   name="sort"

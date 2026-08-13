@@ -211,7 +211,7 @@ export async function scoreAll(): Promise<{ scored: number; top: Scored[] }> {
     }
 
     // Year and fuel are guaranteed present for every row that reaches this
-    // table (both are required to match one of the 3 target variants in the
+    // table (both are required to match one of the target variants in the
     // first place — see lib/target-variants.ts), so mileage is the only
     // basic fact that can genuinely still be missing from the ad.
     if (!row.mileage_km) {
