@@ -10,8 +10,8 @@ import { matchTargetVariant } from "../target-variants";
  *
  * Back to 35k 2026-08-13: the GRJ76 hunt that briefly needed a 150k cap
  * (real listings for that rare variant ran up to 83k EUR) is over — the
- * current target list is budget-conscious Prado 90/Hilux/100-series diesel,
- * all priced 4k-10k per the owner's own market research, so a cap this high
+ * current target list is budget-conscious Prado 90/100-series diesel, both
+ * priced 4k-10k per the owner's own market research, so a cap this high
  * would only let junk/mispriced outliers into the corpus.
  */
 const MIN_PRICE_EUR = 500;

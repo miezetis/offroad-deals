@@ -10,11 +10,10 @@ import { matchTargetVariant } from "../../target-variants";
  * protection like the other blocked sources, fetched via Bright Data.
  *
  * Owner wants exactly the narrow configurations in lib/target-variants.ts,
- * not "Land Cruiser"/"Hilux" in general, so this source filters down to
- * them before returning anything. The general VEHICLES whitelist in
- * lib/vehicles.ts is deliberately left alone: it is shared by every other
- * source and covers the full model range, which is not what was asked for
- * here.
+ * not "Land Cruiser" in general, so this source filters down to them before
+ * returning anything. The general VEHICLES whitelist in lib/vehicles.ts is
+ * deliberately left alone: it is shared by every other source and covers
+ * the full model range, which is not what was asked for here.
  *
  * expectedMinimum is 0 on purpose. A narrow variant filter finding nothing
  * in a given run is normal, not a sign the parser broke; the raw pre-filter
@@ -37,9 +36,6 @@ const SEARCH_URLS = [
   // Covers every Land Cruiser generation in one page; the Prado 90/
   // 100-series requirements are enforced by matchTargetVariant below.
   "https://www.theparking.eu/used-cars/Toyota-Land-Cruiser.html",
-  // Verified 2026-08-13 via the `inspect` workflow: 28 real result cards,
-  // page title "Toyota Hilux used".
-  "https://www.theparking.eu/used-cars/Toyota-Hilux.html",
 ];
 
 const FUEL_MAP: Record<string, "diesel" | "petrol" | "hybrid" | "lpg" | "electric"> = {

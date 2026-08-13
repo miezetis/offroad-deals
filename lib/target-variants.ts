@@ -7,14 +7,12 @@
  *  - lib/pipeline/evaluate.ts (the scoring rubric + engine notes in the AI prompt)
  *  - app/page.tsx (the fixed Variant filter)
  *
- * Owner's call 2026-08-13 (replacing the earlier single-target GRJ76 hunt):
- * back to a budget-conscious European-market shortlist, owner-supplied with
- * specific engine call-outs and price bands —
+ * Owner's call 2026-08-13 (replacing the earlier single-target GRJ76 hunt,
+ * then dropping the Hilux from that list): a budget-conscious European-
+ * market shortlist —
  *  1. Prado 90 (J90/J95) — the "sweet spot" 1KZ-TE 3.0 turbo diesel, plus the
  *     3.4 V6 petrol (5VZ-FE) as a thirstier but equally reliable alternative.
- *  2. Hilux Mk4/Mk5/early Mk6 diesel — the "indestructible" utility truck,
- *     2.4 (2L-T) or 2.5 (2KD-FTV).
- *  3. Land Cruiser 100/105-series diesel — 1HD-FTE (likely over budget per
+ *  2. Land Cruiser 100/105-series diesel — 1HD-FTE (likely over budget per
  *     the owner) or 1HZ (in-budget but slow and high-mileage).
  *
  * Generation labels ("J9 (Prado 90)" etc) match lib/vehicles.ts's existing
@@ -29,8 +27,7 @@ export type TargetVariant = {
   model: string;
   generation: string;
   label: string;
-  /** Null means "don't gate on displacement" — see the Hilux entry. */
-  displacement: string | null;
+  displacement: string;
   fuel: "diesel" | "petrol";
   yearFrom: number;
   yearTo: number;
@@ -87,31 +84,6 @@ export const TARGET_VARIANTS: TargetVariant[] = [
     airSuspensionRisk: null,
   },
   {
-    make: "Toyota", model: "Hilux",
-    generation: "Mk4/Mk5/early Mk6 diesel",
-    label: "Hilux Diesel (2.4 2L-T / 2.5 2KD-FTV)",
-    // No displacement gate: the owner explicitly named two different engines
-    // spanning two chassis generations (2.4 2L-T on Mk4/Mk5, 2.5 2KD-FTV on
-    // the early Mk6 "Vigo") — same lesson as the earlier Hilux target this
-    // tool carried: pinning one cc figure just causes false misses. Year +
-    // fuel + the Hilux-only model filter identify this variant instead.
-    displacement: null, fuel: "diesel", yearFrom: 1988, yearTo: 2009,
-    desirability: 12,
-    note: "2.4L 2L-T turbo diesel (Mk4/Mk5, ~90 HP) or 2.5L 2KD-FTV common-rail turbo " +
-      "diesel (early Mk6 'Vigo', ~102 HP) — slow either way, but will run forever with " +
-      "basic maintenance per the owner's own assessment. The industry-standard utility " +
-      "truck; parts available everywhere in Europe. IMPORTANT inspection item: these " +
-      "were very often used as farm or construction vehicles — check the suspension " +
-      "and drivetrain carefully for signs of heavy commercial abuse, not just cosmetics.",
-    engineTier: { rank: 1, points: 25, label: "2L-T/2KD-FTV diesel" },
-    priceTarget: { min: 4000, max: 10000 },
-    hardExclusionNote: null,
-    lockerNotes: "No factory locking rear differential on most trims of this era. " +
-      "Standard part-time 4WD with low range only; don't credit a locker unless the " +
-      "ad explicitly states one was fitted.",
-    airSuspensionRisk: null,
-  },
-  {
     make: "Toyota", model: "Land Cruiser",
     generation: "J10/J105 (100-series diesel)",
     label: "100 Series 4.2 Diesel (1HD-FTE / 1HZ)",
@@ -154,12 +126,12 @@ export type TargetMatch = {
  * is NOT a target this time, but shares displacement, fuel, and an
  * overlapping year window with the 100/105-series diesel above — an
  * unstated-spec 70-series ad would otherwise mislabel as a 100-series
- * without this exclusion. Also excludes Hilux Surf, the JDM name for the
- * 4Runner (a different vehicle that would otherwise match the bare "hilux"
- * token below), and the newer Prado 150/full-size 200/300-series, whose
- * year ranges don't naturally overlap this list but are excluded defensively
- * in case of a bad year parse. Space-padded whole-word tokens, same
- * technique as lib/vehicles.ts's generation hints.
+ * without this exclusion. "surf" stays excluded defensively (the JDM name
+ * for the 4Runner) even with the Hilux dropped as a target, in case it's
+ * ever added back. Also excludes the newer Prado 150/full-size 200/300-
+ * series, whose year ranges don't naturally overlap this list but are
+ * excluded defensively in case of a bad year parse. Space-padded whole-word
+ * tokens, same technique as lib/vehicles.ts's generation hints.
  */
 const EXCLUDED_GENERATIONS = [
   "70", "71", "73", "75", "76", "77", "78", "79",
@@ -171,8 +143,8 @@ const EXCLUDED_GENERATIONS = [
 ];
 
 /**
- * Title must mention the Land Cruiser/Prado line or the Hilux — the two
- * vehicle families never share a title.
+ * Title must mention the Land Cruiser/Prado line — Hilux dropped as a
+ * target 2026-08-13.
  *
  * Displacement and fuel each narrow the year-plausible candidates further
  * when the ad states them, and either one that flatly contradicts every
@@ -196,14 +168,10 @@ export function matchTargetVariant(
   if (!year) return null;
   const haystack = ` ${title.toLowerCase().replace(/[^a-z0-9.]+/g, " ")} `;
 
-  const isLandCruiser = /land\s*cruiser|prado/.test(haystack);
-  const isHilux = haystack.includes(" hilux ");
-  if (!isLandCruiser && !isHilux) return null;
+  if (!/land\s*cruiser|prado/.test(haystack)) return null;
   if (EXCLUDED_GENERATIONS.some((t) => haystack.includes(` ${t} `))) return null;
 
   let candidates = TARGET_VARIANTS.filter((v) => year >= v.yearFrom && year <= v.yearTo);
-  if (isHilux) candidates = candidates.filter((v) => v.model === "Hilux");
-  else if (isLandCruiser) candidates = candidates.filter((v) => v.model === "Land Cruiser");
   if (!candidates.length) return null;
 
   // "Prado" is Toyota's own name for the J9 line specifically — never used
@@ -225,7 +193,7 @@ export function matchTargetVariant(
 
   const displacement = haystack.match(/\b(\d\.\d)\b/)?.[1];
   if (displacement) {
-    candidates = candidates.filter((v) => v.displacement === null || v.displacement === displacement);
+    candidates = candidates.filter((v) => v.displacement === displacement);
     if (!candidates.length) return null;
   }
 

@@ -7,13 +7,12 @@ import type { RawListing, Source } from "../types";
  * fetched via Bright Data. Structured data lives in __NEXT_DATA__ under
  * props.pageProps.listings — no DOM scraping needed.
  *
- * Searches the plain Land Cruiser and Hilux categories (1577 and 944 total
- * results respectively as of 2026-08-13, far too many to page through fully)
- * sorted price-ascending (&sort=price&desc=0, confirmed via the `inspect`
- * workflow to genuinely return low-to-high prices) — same trick auto24.ts
- * uses: the cheap pages ARE the budget band this tool cares about.
- * matchTargetVariant in ingest.ts still does the real filtering down to the
- * exact target variants.
+ * Searches the plain Land Cruiser category (1577 total results as of
+ * 2026-08-13, far too many to page through fully) sorted price-ascending
+ * (&sort=price&desc=0, confirmed via the `inspect` workflow to genuinely
+ * return low-to-high prices) — same trick auto24.ts uses: the cheap pages
+ * ARE the budget band this tool cares about. matchTargetVariant in
+ * ingest.ts still does the real filtering down to the exact target variants.
  *
  * Country scope: defaults to cy=D,A,B,E,F,I,L,NL (Germany, Austria,
  * Belgium, Spain, France, Italy, Luxembourg, Netherlands) when no `cy`
@@ -25,7 +24,6 @@ import type { RawListing, Source } from "../types";
 
 const SEARCH_URLS = [
   "https://www.autoscout24.com/lst/toyota/land-cruiser?sort=price&desc=0",
-  "https://www.autoscout24.com/lst/toyota/hilux?sort=price&desc=0",
 ];
 const PAGES_PER_DEPTH = 2;
 const MAX_PAGES = 8;
