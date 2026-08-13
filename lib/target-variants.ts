@@ -50,7 +50,13 @@ export const TARGET_VARIANTS: TargetVariant[] = [
     make: "Toyota", model: "Land Cruiser",
     generation: "J76 (GRJ76)",
     label: "76 Series 4.0 V6 Petrol Wagon (GRJ76)",
-    displacement: "4.0", fuel: "petrol", yearFrom: 2007, yearTo: 2024,
+    // The 70-series remains in production today, unlike every other
+    // variant this tool has ever targeted — confirmed via a real bug:
+    // brand-new 2026-model-year GRJ76 dealer stock on AutoScout24 was
+    // silently rejected by an earlier 2024 cutoff copied from a discontinued
+    // model's pattern. yearTo is deliberately generous rather than "current
+    // year" to avoid the same mistake recurring as time passes.
+    displacement: "4.0", fuel: "petrol", yearFrom: 2007, yearTo: 2030,
     desirability: 13,
     note: "1GR-FE 4.0L V6 petrol (~231-282 HP depending on market/year), the same " +
       "well-regarded engine used in the 4Runner, FJ Cruiser and Prado 120. Introduced " +
