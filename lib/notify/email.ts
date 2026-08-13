@@ -19,10 +19,16 @@ function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-export async function sendDealAlert(deals: Deal[], recipientOverride?: string | null): Promise<void> {
+export async function sendDealAlert(
+  deals: Deal[],
+  recipientOverride?: string | null,
+  unsubToken?: string | null,
+): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   const to = recipientOverride || process.env.ALERT_EMAIL_TO;
   if (!apiKey || !to || deals.length === 0) return;
+
+  const unsubUrl = unsubToken ? `https://offroad.miezetis.com/unsubscribe?token=${unsubToken}` : null;
 
   const rows = deals
     .map(
@@ -41,7 +47,8 @@ export async function sendDealAlert(deals: Deal[], recipientOverride?: string | 
       <tr><th align="left">Score</th><th align="left">Title</th><th align="left">Price</th><th align="left">Country</th><th></th></tr>
       ${rows}
     </table>
-    <p><a href="https://offroad.miezetis.com">offroad.miezetis.com</a></p>`;
+    <p><a href="https://offroad.miezetis.com">offroad.miezetis.com</a></p>
+    ${unsubUrl ? `<p style="color:#888;font-size:12px"><a href="${unsubUrl}">Unsubscribe</a></p>` : ""}`;
 
   try {
     const res = await fetch(API, {
@@ -52,6 +59,7 @@ export async function sendDealAlert(deals: Deal[], recipientOverride?: string | 
         to,
         subject: `${deals.length} new offroad deal${deals.length > 1 ? "s" : ""}`,
         html,
+        ...(unsubUrl ? { headers: { "List-Unsubscribe": `<${unsubUrl}>` } } : {}),
       }),
       signal: AbortSignal.timeout(15_000),
     });

@@ -76,13 +76,13 @@ async function main() {
   // on/off switch, a score threshold, and a frequency cap so a burst of
   // qualifying deals in one scan run doesn't email every 30 minutes.
   const settingsRows = (await sql.query(
-    "select enabled, min_score, frequency_hours, recipient_email, last_sent_at from alert_settings where id = 1",
+    "select enabled, min_score, frequency_hours, recipient_email, last_sent_at, unsub_token from alert_settings where id = 1",
   )) as {
     enabled: boolean; min_score: number; frequency_hours: number;
-    recipient_email: string | null; last_sent_at: string | null;
+    recipient_email: string | null; last_sent_at: string | null; unsub_token: string | null;
   }[];
   const alertSettings = settingsRows[0] ?? {
-    enabled: true, min_score: 70, frequency_hours: 0, recipient_email: null, last_sent_at: null,
+    enabled: true, min_score: 70, frequency_hours: 0, recipient_email: null, last_sent_at: null, unsub_token: null,
   };
 
   // Fresh high scorers from this run become the notification payload.
@@ -111,7 +111,7 @@ async function main() {
       startedAt.getTime() - new Date(alertSettings.last_sent_at).getTime() >= alertSettings.frequency_hours * 3_600_000;
 
     if (alertSettings.enabled && cooldownOk) {
-      await sendDealAlert(newDeals, alertSettings.recipient_email);
+      await sendDealAlert(newDeals, alertSettings.recipient_email, alertSettings.unsub_token);
       await sql.query("update alert_settings set last_sent_at = now() where id = 1");
     }
   }

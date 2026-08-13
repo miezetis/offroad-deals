@@ -10,8 +10,8 @@ import { sendDealAlert } from "../lib/notify/email";
 async function main() {
   const sql = db();
   const rows = (await sql.query(
-    "select recipient_email from alert_settings where id = 1",
-  )) as { recipient_email: string | null }[];
+    "select recipient_email, unsub_token from alert_settings where id = 1",
+  )) as { recipient_email: string | null; unsub_token: string | null }[];
   const recipientOverride = rows[0]?.recipient_email ?? null;
 
   await sendDealAlert(
@@ -25,6 +25,7 @@ async function main() {
       },
     ],
     recipientOverride,
+    rows[0]?.unsub_token ?? null,
   );
 
   console.log(`test-email: sent (recipient: ${recipientOverride || "ALERT_EMAIL_TO env var"})`);

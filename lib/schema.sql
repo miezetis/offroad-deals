@@ -105,6 +105,12 @@ create table if not exists alert_settings (
 );
 insert into alert_settings (id) values (1) on conflict (id) do nothing;
 
+-- One-click unsubscribe: embedded in every alert email, checked with no
+-- login by GET /unsubscribe to flip enabled off.
+alter table alert_settings add column if not exists unsub_token text;
+update alert_settings set unsub_token = md5(random()::text || clock_timestamp()::text)
+  where unsub_token is null;
+
 -- One row per scan run: what each source returned, for drift detection.
 create table if not exists scan_runs (
   id           bigint generated always as identity primary key,
