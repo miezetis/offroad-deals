@@ -7,9 +7,16 @@ import { matchTargetVariant } from "../target-variants";
 /**
  * Keep the corpus wider than the buying band on purpose: the 12k Pajeros are
  * what prove the 7k one is cheap. The UI narrows to the user's band.
+ *
+ * Raised to 60k 2026-08-13 for the GRJ76 target: it's a rare grey import
+ * that can plausibly command a real collector/rarity premium above the
+ * old 35k cap, and the whole point of scoring "much lower than usual" deals
+ * is having the expensive end of the real market in the corpus to compare
+ * against — a cap that silently dropped genuine high-priced comps would
+ * make every score a guess.
  */
 const MIN_PRICE_EUR = 500;
-const MAX_PRICE_EUR = 35000;
+const MAX_PRICE_EUR = 60000;
 
 /** Same car cross-posted on two sites lands on the same key. */
 function dedupeKey(make: string, model: string, year?: number, km?: number, price?: number) {
