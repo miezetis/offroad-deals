@@ -9,16 +9,17 @@ import { matchTargetVariant } from "../../target-variants";
  * autoscout24, 2ememain, autoplius, dealer sites, etc). Behind bot
  * protection like the other blocked sources, fetched via Bright Data.
  *
- * Owner wants exactly three narrow configurations, not "Land Cruiser" in
- * general, so this source filters down to them before returning anything.
- * The general VEHICLES whitelist in lib/vehicles.ts is deliberately left
- * alone: it is shared by every other source and covers the full model
- * range, which is not what was asked for here.
+ * Owner wants exactly the narrow configurations in lib/target-variants.ts,
+ * not "Land Cruiser"/"Hilux" in general, so this source filters down to
+ * them before returning anything. The general VEHICLES whitelist in
+ * lib/vehicles.ts is deliberately left alone: it is shared by every other
+ * source and covers the full model range, which is not what was asked for
+ * here.
  *
- * expectedMinimum is 0 on purpose. A narrow three-variant filter finding
- * nothing in a given run is normal, not a sign the parser broke; the raw
- * pre-filter count is logged instead so a real breakage is still visible
- * in the Action log without spamming health-warning issues.
+ * expectedMinimum is 0 on purpose. A narrow variant filter finding nothing
+ * in a given run is normal, not a sign the parser broke; the raw pre-filter
+ * count is logged instead so a real breakage is still visible in the
+ * Action log without spamming health-warning issues.
  *
  * Confirmed against a real Bright Data fetch (via the `inspect` workflow):
  * the hash-bang URL a browser generates when you use the on-site search box
@@ -33,12 +34,13 @@ import { matchTargetVariant } from "../../target-variants";
  */
 
 const SEARCH_URLS = [
+  // Covers every Land Cruiser generation in one page: 70/80/100-105/120/150/
+  // 200-series are all filtered down to the exact targets by
+  // matchTargetVariant below.
   "https://www.theparking.eu/used-cars/Toyota-Land-Cruiser.html",
-  // Unverified guess at the same URL pattern for the Lexus GX470 (added
-  // 2026-08-11). Should be validated via the `inspect` workflow before
-  // fully trusting it; a wrong slug just yields 0 rows from this fetch,
-  // not a crash.
-  "https://www.theparking.eu/used-cars/Lexus-GX470.html",
+  // Verified 2026-08-13 via the `inspect` workflow: 28 real result cards,
+  // page title "Toyota Hilux used".
+  "https://www.theparking.eu/used-cars/Toyota-Hilux.html",
 ];
 
 const FUEL_MAP: Record<string, "diesel" | "petrol" | "hybrid" | "lpg" | "electric"> = {
