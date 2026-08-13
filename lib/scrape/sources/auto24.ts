@@ -62,9 +62,17 @@ export const auto24: Source = {
     const pages = Math.min(maxPages * PAGES_PER_DEPTH, 12);
     for (let page = 1; page <= pages; page++) {
       const offset = (page - 1) * ROWS_PER_PAGE;
-      const html = await fetchViaBrightdata(
-        `https://www.auto24.ee/kasutatud/nimekiri.php?bn=2&a=102&otsi=1&ak=${offset}`,
-      );
+      let html: string;
+      try {
+        html = await fetchViaBrightdata(
+          `https://www.auto24.ee/kasutatud/nimekiri.php?bn=2&a=102&otsi=1&ak=${offset}`,
+        );
+      } catch (err) {
+        // One flaky page (usually a slow Bright Data attempt) shouldn't
+        // discard pages already fetched successfully this run.
+        console.log(`auto24: page ${page} failed, keeping ${all.length} rows so far: ${(err as Error).message.slice(0, 120)}`);
+        break;
+      }
       const rows = parseList(html);
       all.push(...rows);
       if (rows.length < 20) break;

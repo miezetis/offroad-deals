@@ -134,25 +134,31 @@ export const subito: Source = {
       const query = encodeURIComponent(keyword);
       let firstIdSeen: string | undefined;
 
-      for (let page = 1; page <= pages; page++) {
-        const suffix = page === 1 ? "" : `&o=${page}`;
-        const html = await fetchViaBrightdata(
-          `https://www.subito.it/annunci-italia/vendita/auto/?q=${query}${suffix}`,
-        );
-        const items = extractItems(html);
-        if (items.length === 0) break;
+      try {
+        for (let page = 1; page <= pages; page++) {
+          const suffix = page === 1 ? "" : `&o=${page}`;
+          const html = await fetchViaBrightdata(
+            `https://www.subito.it/annunci-italia/vendita/auto/?q=${query}${suffix}`,
+          );
+          const items = extractItems(html);
+          if (items.length === 0) break;
 
-        if (page === 1) {
-          firstIdSeen = items[0]?.urn;
-        } else if (items[0]?.urn === firstIdSeen) {
-          break; // pagination param had no effect, stop paying for repeats
-        }
+          if (page === 1) {
+            firstIdSeen = items[0]?.urn;
+          } else if (items[0]?.urn === firstIdSeen) {
+            break; // pagination param had no effect, stop paying for repeats
+          }
 
-        for (const item of items) {
-          const listing = toListing(item);
-          if (listing) all.push(listing);
+          for (const item of items) {
+            const listing = toListing(item);
+            if (listing) all.push(listing);
+          }
+          if (items.length < 20) break;
         }
-        if (items.length < 20) break;
+      } catch (err) {
+        // One flaky keyword (usually a slow Bright Data attempt) shouldn't
+        // discard the other 33 keywords already fetched successfully this run.
+        console.log(`subito: "${keyword}" failed, keeping ${all.length} rows so far: ${(err as Error).message.slice(0, 120)}`);
       }
     }
     return all;
