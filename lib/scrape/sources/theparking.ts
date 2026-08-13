@@ -9,12 +9,12 @@ import { matchTargetVariant } from "../../target-variants";
  * autoscout24, 2ememain, autoplius, dealer sites, etc). Behind bot
  * protection like the other blocked sources, fetched via Bright Data.
  *
- * Owner wants exactly the single GRJ76 configuration in
- * lib/target-variants.ts, not "Land Cruiser" in general, so this source
- * filters down to it before returning anything. The general VEHICLES
- * whitelist in lib/vehicles.ts is deliberately left alone: it is shared by
- * every other source and covers the full model range, which is not what
- * was asked for here.
+ * Owner wants exactly the narrow configurations in lib/target-variants.ts,
+ * not "Land Cruiser"/"Hilux" in general, so this source filters down to
+ * them before returning anything. The general VEHICLES whitelist in
+ * lib/vehicles.ts is deliberately left alone: it is shared by every other
+ * source and covers the full model range, which is not what was asked for
+ * here.
  *
  * expectedMinimum is 0 on purpose. A narrow variant filter finding nothing
  * in a given run is normal, not a sign the parser broke; the raw pre-filter
@@ -34,10 +34,12 @@ import { matchTargetVariant } from "../../target-variants";
  */
 
 const SEARCH_URLS = [
-  // Covers every 70-series body/engine combination in one page; the 76-body
-  // and V6-petrol requirements are enforced by matchTargetVariant below, not
-  // by the URL, since theparking.eu has no finer-grained search than model.
+  // Covers every Land Cruiser generation in one page; the Prado 90/
+  // 100-series requirements are enforced by matchTargetVariant below.
   "https://www.theparking.eu/used-cars/Toyota-Land-Cruiser.html",
+  // Verified 2026-08-13 via the `inspect` workflow: 28 real result cards,
+  // page title "Toyota Hilux used".
+  "https://www.theparking.eu/used-cars/Toyota-Hilux.html",
 ];
 
 const FUEL_MAP: Record<string, "diesel" | "petrol" | "hybrid" | "lpg" | "electric"> = {

@@ -7,28 +7,28 @@ import type { RawListing, Source } from "../types";
  * fetched via Bright Data. Structured data lives in __NEXT_DATA__ under
  * props.pageProps.listings — no DOM scraping needed.
  *
- * Uses AutoScout24's own "ve_grj" variant filter (found via a live web
- * search, confirmed 2026-08-13 via the `inspect` workflow) rather than a
- * plain model search: it pre-filters to the GRJ engine-code family
- * (GRJ71/76/78/79 — the 4.0 V6 petrol 70-series), which is a much better
- * match density than a generic "Toyota Land Cruiser" search would give,
- * given how rare the GRJ76 wagon specifically is. matchTargetVariant in
- * ingest.ts still does the real filtering down to exactly the 76 body.
+ * Searches the plain Land Cruiser and Hilux categories (1577 and 944 total
+ * results respectively as of 2026-08-13, far too many to page through fully)
+ * sorted price-ascending (&sort=price&desc=0, confirmed via the `inspect`
+ * workflow to genuinely return low-to-high prices) — same trick auto24.ts
+ * uses: the cheap pages ARE the budget band this tool cares about.
+ * matchTargetVariant in ingest.ts still does the real filtering down to the
+ * exact target variants.
  *
  * Country scope: defaults to cy=D,A,B,E,F,I,L,NL (Germany, Austria,
  * Belgium, Spain, France, Italy, Luxembourg, Netherlands) when no `cy`
- * param is given. Tried widening it to more countries (Czech Republic,
- * Poland, UK, etc — real GRJ76 listings are known to exist in some of
- * these per a live web search) but an invalid/unsupported country code
- * zeroes out the entire result set rather than being ignored, and burning
- * paid requests guessing at AutoScout24's exact valid code list wasn't
- * worth it. Left at the default 8-country scope, which is where the
- * German/Italian overland-conversion dealers actually selling these
- * appear to be concentrated anyway.
+ * param is given. Tried widening it to more countries but an invalid/
+ * unsupported country code zeroes out the entire result set rather than
+ * being ignored, and burning paid requests guessing at AutoScout24's exact
+ * valid code list wasn't worth it. Left at the default 8-country scope.
  */
 
-const BASE_URL = "https://www.autoscout24.com/lst/toyota/land-cruiser/ve_grj";
-const MAX_PAGES = 3; // confirmed via inspect: 47 results / ~19-20 per page
+const SEARCH_URLS = [
+  "https://www.autoscout24.com/lst/toyota/land-cruiser?sort=price&desc=0",
+  "https://www.autoscout24.com/lst/toyota/hilux?sort=price&desc=0",
+];
+const PAGES_PER_DEPTH = 2;
+const MAX_PAGES = 8;
 
 const FUEL_MAP: Record<string, "diesel" | "petrol"> = {
   gasoline: "petrol",
@@ -67,15 +67,14 @@ export function toListing(l: AS24Listing): RawListing | undefined {
   if (!price || !l.url) return undefined;
 
   const make = l.vehicle.make ?? "Toyota";
-  const model = l.vehicle.model ?? "Land Cruiser";
+  const model = l.vehicle.model ?? "";
   const title = [make, model, l.vehicle.modelVersionInput].filter(Boolean).join(" ");
 
   const fuel = l.vehicle.fuel ? FUEL_MAP[l.vehicle.fuel.toLowerCase()] : undefined;
 
-  // "new" (unregistered dealer stock, common for these specialist
-  // overland-conversion builds) has no first-registration date — treated as
-  // this year's model rather than dropped, since matchTargetVariant requires
-  // a year and most real GRJ76 stock on this site is exactly this: new.
+  // "new" (unregistered dealer stock) has no first-registration date —
+  // treated as this year's model rather than dropped, since
+  // matchTargetVariant requires a year.
   const firstReg = l.tracking?.firstRegistration;
   const year = firstReg === "new" ? new Date().getFullYear() : parseYear(firstReg ?? "");
 
@@ -109,28 +108,28 @@ export const autoscout24: Source = {
   name: "autoscout24",
   country: "EU",
   enabled: brightdataAvailable,
-  // Narrow single-variant filter — a healthy run finding nothing is normal,
-  // not a sign of breakage. See lib/scrape/sources/theparking.ts for the
-  // same reasoning.
-  expectedMinimum: 0,
-  async scan() {
+  expectedMinimum: 15,
+  async scan(maxPages) {
     const out: RawListing[] = [];
-    for (let page = 1; page <= MAX_PAGES; page++) {
-      const url = page === 1 ? BASE_URL : `${BASE_URL}?page=${page}`;
-      try {
-        const html = await fetchViaBrightdata(url);
-        const listings = extractListings(html);
-        if (listings.length === 0) break;
-        for (const l of listings) {
-          const row = toListing(l);
-          if (row) out.push(row);
+    const pages = Math.min(maxPages * PAGES_PER_DEPTH, MAX_PAGES);
+    for (const baseUrl of SEARCH_URLS) {
+      for (let page = 1; page <= pages; page++) {
+        const url = page === 1 ? baseUrl : `${baseUrl}&page=${page}`;
+        try {
+          const html = await fetchViaBrightdata(url);
+          const listings = extractListings(html);
+          if (listings.length === 0) break;
+          for (const l of listings) {
+            const row = toListing(l);
+            if (row) out.push(row);
+          }
+        } catch (err) {
+          console.log(`autoscout24: ${baseUrl} page ${page} failed, keeping ${out.length} rows so far: ${(err as Error).message.slice(0, 120)}`);
+          break;
         }
-      } catch (err) {
-        console.log(`autoscout24: page ${page} failed, keeping ${out.length} rows so far: ${(err as Error).message.slice(0, 120)}`);
-        break;
       }
     }
-    console.log(`autoscout24: ${out.length} rows in the GRJ engine-code family`);
+    console.log(`autoscout24: ${out.length} rows fetched (unfiltered)`);
     return out;
   },
 };

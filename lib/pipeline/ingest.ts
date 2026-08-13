@@ -8,16 +8,14 @@ import { matchTargetVariant } from "../target-variants";
  * Keep the corpus wider than the buying band on purpose: the 12k Pajeros are
  * what prove the 7k one is cheap. The UI narrows to the user's band.
  *
- * Raised to 150k 2026-08-13 for the GRJ76 target, after a first guess of
- * 60k turned out too low: real AutoScout24 listings for this exact variant
- * go up to 83k EUR (mostly new-build overland-conversion stock, not used
- * cars), confirmed via the `inspect` workflow. The whole point of scoring
- * "much lower than usual" deals is having the expensive end of the real
- * market in the corpus to compare against — a cap that silently dropped
- * genuine high-priced comps would make every score a guess.
+ * Back to 35k 2026-08-13: the GRJ76 hunt that briefly needed a 150k cap
+ * (real listings for that rare variant ran up to 83k EUR) is over — the
+ * current target list is budget-conscious Prado 90/Hilux/100-series diesel,
+ * all priced 4k-10k per the owner's own market research, so a cap this high
+ * would only let junk/mispriced outliers into the corpus.
  */
 const MIN_PRICE_EUR = 500;
-const MAX_PRICE_EUR = 150000;
+const MAX_PRICE_EUR = 35000;
 
 /** Same car cross-posted on two sites lands on the same key. */
 function dedupeKey(make: string, model: string, year?: number, km?: number, price?: number) {
