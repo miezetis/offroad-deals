@@ -25,8 +25,11 @@ import type { RawListing, Source } from "../types";
 const SEARCH_URLS = [
   "https://www.autoscout24.com/lst/toyota/land-cruiser?sort=price&desc=0",
 ];
-const PAGES_PER_DEPTH = 2;
-const MAX_PAGES = 8;
+// Cut 2026-08-13 (was 2/8) after the owner ran out of Bright Data free-tier
+// credits mid-month — price-ascending sort means even 1 shallow page still
+// covers the cheap/budget end of the market that matters most here.
+const PAGES_PER_DEPTH = 1;
+const MAX_PAGES = 4;
 
 const FUEL_MAP: Record<string, "diesel" | "petrol"> = {
   gasoline: "petrol",

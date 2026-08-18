@@ -2,12 +2,15 @@ name: scan
 
 on:
   schedule:
-    # Shallow scan every 30 minutes (first page per category). Owner's call
-    # 2026-08-11: catch new listings faster, at the cost of ~4x the Actions
-    # minutes and paid Bright Data requests versus the old 2-hourly cadence.
-    - cron: "*/30 * * * *"
+    # Shallow scan every 4 hours (first page per category). Cut back from
+    # every 30 minutes on 2026-08-13: the owner ran out of Bright Data
+    # free-tier credits mid-month at that cadence. Combined with the
+    # narrowed subito.ts keyword list and shallower autoscout24.ts paging,
+    # this is roughly a 40x reduction in monthly Bright Data requests.
+    - cron: "0 */4 * * *"
     # Nightly deep sweep at 02:40 UTC keeps last_seen honest for whole
-    # categories, which is what sold-car detection depends on.
+    # categories, which is what sold-car detection depends on. Depth cut
+    # from 6 to 2 on 2026-08-13 for the same credit-budget reason.
     - cron: "40 2 * * *"
   workflow_dispatch:
     inputs:
@@ -59,7 +62,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM: ${{ secrets.RESEND_FROM }}
           ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
-          SCAN_DEPTH: ${{ github.event_name == 'schedule' && github.event.schedule == '40 2 * * *' && '6' || github.event.inputs.depth || '1' }}
+          SCAN_DEPTH: ${{ github.event_name == 'schedule' && github.event.schedule == '40 2 * * *' && '2' || github.event.inputs.depth || '1' }}
 
       - name: Notify new top deals
         if: steps.scan.outputs.new_deals != ''

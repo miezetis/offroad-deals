@@ -13,43 +13,14 @@ import type { RawListing, Source } from "../types";
  * page 1's first item and the loop below detects that and stops, so a bad
  * guess costs one extra BD call per keyword rather than silently duplicating
  * data forever.
+ *
+ * Cut from 34 keywords (the old wide vehicle list) to 1 on 2026-08-13: the
+ * owner ran out of Bright Data free-tier credits mid-month, and 33 of those
+ * 34 keywords (Pajero, Jimny, Defender, etc) can never match the current
+ * narrow Toyota Land Cruiser-only target list — every search against them
+ * was pure waste. Re-widen this list if the target scope broadens again.
  */
-const KEYWORDS = [
-  "toyota land cruiser",
-  "lexus gx470",
-  "toyota hilux",
-  "toyota tacoma",
-  "toyota rav4",
-  "toyota 4runner",
-  "mitsubishi pajero",
-  "mitsubishi l200",
-  "mitsubishi delica",
-  "nissan patrol",
-  "nissan terrano",
-  "nissan pathfinder",
-  "suzuki jimny",
-  "suzuki samurai",
-  "suzuki vitara",
-  "land rover defender",
-  "land rover discovery",
-  "range rover classic",
-  "jeep wrangler",
-  "isuzu trooper",
-  "isuzu d-max",
-  "opel frontera",
-  "ssangyong musso",
-  "ssangyong korando",
-  "ssangyong rexton",
-  "hyundai terracan",
-  "hyundai galloper",
-  "kia sorento",
-  "ford maverick",
-  "mercedes classe g",
-  "uaz",
-  "subaru forester",
-  "subaru outback",
-  "subaru impreza",
-];
+const KEYWORDS = ["toyota land cruiser"];
 
 const PAGES_PER_DEPTH = 2;
 
