@@ -204,6 +204,18 @@ export type TargetMatch = {
  * The 70-series is a target again as of 2026-08-24, so its own tokens are no
  * longer excluded here — see HUNDRED_SERIES_TOKENS/J7_TOKENS below for how
  * its classic-diesel overlap with the 100-series is resolved instead.
+ *
+ * The 80-series is NOT a target and never has been in this list, but its
+ * whole production run (1990-97) sits entirely inside the 70-series classic
+ * diesel's year window (1990-2007) with no other target variant's window
+ * overlapping 1990-97 either — so an 80-series ad with no displacement/fuel
+ * stated was the sole remaining candidate by year alone and silently
+ * mislabeled as a 70-series. Confirmed live in production 2026-08-26: 4 real
+ * HDJ80 listings (one literally titled "...J8 H Zulassung", i.e. self-
+ * identifying as J8) got tagged "J7 (70-series) classic diesel". Excluded by
+ * chassis code/body number now, same fix pattern as the LC200 chassis codes
+ * below.
+ *
  * "surf" stays excluded defensively (the JDM name for the 4Runner) even with
  * the Hilux dropped as a target, in case it's ever added back. Also
  * excludes the newer Prado 150/full-size 200/300-series (VDJ200/UZJ200 are
@@ -214,6 +226,7 @@ export type TargetMatch = {
  * as lib/vehicles.ts's generation hints.
  */
 const EXCLUDED_GENERATIONS = [
+  "80", "81", "j8", "hdj80", "hdj81", "hzj80", "hzj81", "fzj80", "fzj80h",
   "surf",
   "150", "j150", "kdj150", "grj150",
   "200", "j200", "vdj200", "uzj200", "urj200",

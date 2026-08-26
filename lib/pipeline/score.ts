@@ -81,6 +81,7 @@ const RED_FLAGS: [RegExp, string][] = [
   [/kein\s*t[üu]v|ohne\s*t[üu]v|be\s*ta\b|bez\s*ta\b|be\s*tech/i, "no roadworthiness certificate"],
   [/unfall|avarij|accident|powypadkow/i, "accident damage"],
   [/p[āa]rdod\s*da[ļl][āa]s|dalimis|na\s*[cč]asti|for\s*parts|auf\s*teile/i, "sold for parts"],
+  [/ohne\s*motor|kein\s*motor|ohne\s*getriebe|kein\s*getriebe|no\s*engine|without\s*engine|engine\s*missing|be\s*variklio|bez\s*dzin[eē]ja|bez\s*silnika/i, "sold without engine/gearbox"],
   [/nev[ai]ž[iu]uoja|nejezdi|not\s*running|nie\s*jezdzi/i, "not running"],
   [/rez[eė]les|supuv|rust|rostig|zardzewial/i, "rust mentioned"],
   [/renovavimui|remontui|zum\s*restaurieren|do\s*remontu|project/i, "project / needs restoration"],
