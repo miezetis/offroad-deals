@@ -15,6 +15,15 @@
  *  2. Land Cruiser 100/105-series diesel — 1HD-FTE (likely over budget per
  *     the owner) or 1HZ (in-budget but slow and high-mileage).
  *
+ * Owner's call 2026-08-24: added the 70-series (J7) back — likely purchase
+ * choice, picked for the round-headlight front-end look that most of its
+ * production run (1984-2023ish) carries. Still in production today, so it
+ * spans three real engine eras rather than one: the classic 4.2 inline-6
+ * diesel, and the modern 4.5 V8 diesel / 4.0 V6 petrol pairing introduced
+ * 2007+ (the same GRJ76 V6 this tool briefly hunted exclusively on
+ * 2026-08-13). No round-headlight guarantee on the very latest facelift —
+ * flagged in the note, confirm from listing photos.
+ *
  * Generation labels ("J9 (Prado 90)" etc) match lib/vehicles.ts's existing
  * Land Cruiser naming on purpose, so historical rows ingested under the old
  * broad whitelist line up with the new one instead of needing a migration.
@@ -110,6 +119,76 @@ export const TARGET_VARIANTS: TargetVariant[] = [
       "convert to standard coil springs. Treat active/unconverted AHC as a real " +
       "repair-cost risk unless the ad states it's been converted.",
   },
+  {
+    make: "Toyota", model: "Land Cruiser",
+    generation: "J7 (70-series) classic diesel",
+    label: "70 Series 4.2 Diesel (1HZ / 1HD-T / 1HD-FT)",
+    displacement: "4.2", fuel: "diesel", yearFrom: 1990, yearTo: 2007,
+    desirability: 13,
+    note: "1HZ naturally-aspirated (~130 HP) or 1HD-T/1HD-FT turbo (~165 HP) 4.2L " +
+      "inline-6 diesel. The purist's Land Cruiser: solid axles front and rear, " +
+      "leaf-sprung, minimal electronics, round headlights on essentially every " +
+      "example of this era — about as close to unbreakable as a diesel Toyota gets. " +
+      "Genuinely few weak points; 1HD-FT turbo/injector wear at very high mileage is " +
+      "about the only real inspect item.",
+    engineTier: { rank: 1, points: 25, label: "1HZ/1HD-T inline-6 diesel" },
+    priceTarget: { min: 6000, max: 12000 },
+    hardExclusionNote: null,
+    lockerNotes: "Factory front and rear locking differentials were a common option on " +
+      "export/Africa-Middle-East-spec Troop Carrier and GX/GXL trims — this generation " +
+      "is one of the more likely to be genuinely double-locked. Many base/JDM trims are " +
+      "open though; only credit what the ad or dash-switch photos actually show.",
+    airSuspensionRisk: null,
+  },
+  {
+    make: "Toyota", model: "Land Cruiser",
+    generation: "J7 (70-series) modern diesel",
+    label: "70 Series 4.5 V8 Diesel (1VD-FTV)",
+    displacement: "4.5", fuel: "diesel", yearFrom: 2007, yearTo: 2030,
+    desirability: 12,
+    note: "1VD-FTV 4.5L V8 twin-turbo diesel (~150-200 HP depending on market/year), " +
+      "the modern engine still fitted to new-production 70-series trucks today. " +
+      "IMPORTANT inspection item: this engine has a well-documented EGR cooler " +
+      "cracking issue (mainly pre-2012 production) that lets coolant leak into the " +
+      "engine — the single most important thing to check on this variant. Round " +
+      "headlights on most markets' 70-series through this era, but Toyota's most " +
+      "recent facelift may differ — confirm from the actual listing photos rather " +
+      "than assuming.",
+    engineTier: { rank: 2, points: 20, label: "1VD-FTV V8 twin-turbo diesel" },
+    priceTarget: { min: 15000, max: 35000 },
+    hardExclusionNote: "1VD-FTV's documented EGR cooler cracking issue (mainly " +
+      "pre-2012 production) lets coolant leak into the engine — a serious, expensive " +
+      "failure mode. No documented EGR cooler inspection/replacement history is a " +
+      "real risk on an unconfirmed example, not automatically disqualifying, but " +
+      "weight it heavily.",
+    lockerNotes: "Front and rear locking differentials standard on Middle-East " +
+      "'GXR'/'VXR' heavy-duty spec (a common source for European grey imports) but " +
+      "not on every trim. Only credit lockers the ad or dash-switch photos actually show.",
+    airSuspensionRisk: null,
+  },
+  {
+    make: "Toyota", model: "Land Cruiser",
+    generation: "J7 (70-series) modern petrol",
+    label: "70 Series 4.0 V6 Petrol (1GR-FE / GRJ76)",
+    displacement: "4.0", fuel: "petrol", yearFrom: 2007, yearTo: 2030,
+    desirability: 13,
+    note: "1GR-FE 4.0L V6 petrol (~231-282 HP depending on market/year), the same " +
+      "well-regarded engine used in the 4Runner, FJ Cruiser and Prado 120 — chain-" +
+      "driven, minimal documented weak points, genuinely simple and reliable. This " +
+      "exact spec (GRJ chassis code) was primarily an Australia/Middle-East/Africa-" +
+      "market option, essentially never officially sold in Europe, so a European " +
+      "listing is almost certainly a private grey import — confirm import paperwork " +
+      "and genuine V6 petrol identity before trusting an ad. Round headlights on most " +
+      "markets' 70-series through this era; confirm from listing photos.",
+    engineTier: { rank: 1, points: 25, label: "1GR-FE V6 petrol" },
+    priceTarget: { min: 15000, max: 35000 },
+    hardExclusionNote: null,
+    lockerNotes: "Front and rear locking differentials commonly fitted on GXL/GX-R " +
+      "heavy-duty export trims — one of the more likely 70-series configurations to " +
+      "be genuinely double-locked. Only credit what the ad or dash-switch photos " +
+      "actually show.",
+    airSuspensionRisk: null,
+  },
 ];
 
 export type TargetMatch = {
@@ -122,24 +201,23 @@ export type TargetMatch = {
 };
 
 /**
- * The 70-series diesel (HZJ7x/HDJ7x, 4.2L, sold throughout this whole era)
- * is NOT a target this time, but shares displacement, fuel, and an
- * overlapping year window with the 100/105-series diesel above — an
- * unstated-spec 70-series ad would otherwise mislabel as a 100-series
- * without this exclusion. "surf" stays excluded defensively (the JDM name
- * for the 4Runner) even with the Hilux dropped as a target, in case it's
- * ever added back. Also excludes the newer Prado 150/full-size 200/300-
- * series, whose year ranges don't naturally overlap this list but are
- * excluded defensively in case of a bad year parse. Space-padded whole-word
- * tokens, same technique as lib/vehicles.ts's generation hints.
+ * The 70-series is a target again as of 2026-08-24, so its own tokens are no
+ * longer excluded here — see HUNDRED_SERIES_TOKENS/J7_TOKENS below for how
+ * its classic-diesel overlap with the 100-series is resolved instead.
+ * "surf" stays excluded defensively (the JDM name for the 4Runner) even with
+ * the Hilux dropped as a target, in case it's ever added back. Also
+ * excludes the newer Prado 150/full-size 200/300-series (VDJ200/UZJ200 are
+ * that full-size line's diesel/petrol, not this list's 70-series V8/V6 —
+ * excluded by chassis code so a stray mention can't be misread), whose year
+ * ranges don't naturally overlap this list but are excluded defensively in
+ * case of a bad year parse. Space-padded whole-word tokens, same technique
+ * as lib/vehicles.ts's generation hints.
  */
 const EXCLUDED_GENERATIONS = [
-  "70", "71", "73", "75", "76", "77", "78", "79",
-  "hzj70", "hzj71", "hzj73", "hzj75", "hzj76", "hzj77", "hzj78", "hzj79",
-  "hdj70", "hdj71", "hdj73", "hdj76", "hdj78", "hdj79",
   "surf",
   "150", "j150", "kdj150", "grj150",
-  "200", "j200", "300", "j300",
+  "200", "j200", "vdj200", "uzj200", "urj200",
+  "300", "j300",
 ];
 
 /**
@@ -149,11 +227,13 @@ const EXCLUDED_GENERATIONS = [
  * Displacement and fuel each narrow the year-plausible candidates further
  * when the ad states them, and either one that flatly contradicts every
  * year-plausible variant rejects the match outright (better to miss a
- * listing than mislabel one). Prado 90 and the 100/105-series diesel
- * overlap 1998-2002, but different displacements (3.0/3.4 vs 4.2) resolve
- * it whenever the ad states one; when it doesn't, "Prado" in the title is
- * the disambiguator (Toyota's own name for the J9 line, never used for the
- * 100-series). An ad with neither and no displacement/fuel stated stays
+ * listing than mislabel one). Two overlaps need a token-based disambiguator
+ * before falling back to displacement/fuel: Prado 90 vs the 100/105-series
+ * diesel (1998-2002, resolved by "Prado" — Toyota's own name for the J9
+ * line, never used for the 100-series) and the 70-series classic diesel vs
+ * the 100/105-series diesel (same displacement/fuel, heavily overlapping
+ * years — resolved by Toyota's own model-number tokens, e.g. "78"/"hdj100").
+ * An ad with none of these tokens and no displacement/fuel stated stays
  * unresolved (null) rather than guessing — same "miss over mislabel" rule
  * as always.
  *
@@ -188,6 +268,20 @@ export function matchTargetVariant(
   const HUNDRED_SERIES_TOKENS = ["100", "105", "hdj100", "hdj105", "hzj105", "uzj100"];
   if (HUNDRED_SERIES_TOKENS.some((t) => haystack.includes(` ${t} `))) {
     const only = candidates.filter((v) => v.generation === "J10/J105 (100-series diesel)");
+    if (only.length) candidates = only;
+  }
+
+  // The 70-series classic diesel and the 100/105-series diesel share
+  // displacement (4.2), fuel and an overlapping year window, so neither
+  // narrows them apart — Toyota's own model-number tokens are the only
+  // thing that can when the ad skips the spec sheet.
+  const J7_TOKENS = [
+    "70", "71", "73", "75", "76", "77", "78", "79",
+    "hzj70", "hzj71", "hzj73", "hzj75", "hzj76", "hzj77", "hzj78", "hzj79",
+    "hdj70", "hdj71", "hdj73", "hdj76", "hdj78", "hdj79",
+  ];
+  if (J7_TOKENS.some((t) => haystack.includes(` ${t} `))) {
+    const only = candidates.filter((v) => v.generation === "J7 (70-series) classic diesel");
     if (only.length) candidates = only;
   }
 
